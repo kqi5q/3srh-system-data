@@ -17,6 +17,10 @@
             "device": null
         }
     },
-    "blacklisted_codes": [],
-    "blacklisted_devices": []
+    "blacklisted_codes": [
+        "3SRH-Q5GUA"
+    ],
+    "blacklisted_devices": [
+        "DESKTOP-G6CJ661"
+    ]
 }
