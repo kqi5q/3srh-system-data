@@ -1,4 +1,8 @@
 {
-    "blacklisted_codes": [],
-    "blacklisted_devices": []
+    "blacklisted_codes": [
+        "3SRH-D3S5A"
+    ],
+    "blacklisted_devices": [
+        "DESKTOP-G6CJ661"
+    ]
 }
