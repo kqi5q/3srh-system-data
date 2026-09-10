@@ -9,8 +9,8 @@
             "device": null
         },
         "3SRH-Q5GUA": {
-            "used": false,
-            "device": null
+            "used": true,
+            "device": "DESKTOP-G6CJ661"
         },
         "3SRH-EL8A4": {
             "used": false,
