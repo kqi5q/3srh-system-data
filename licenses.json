@@ -1,0 +1,14 @@
+{
+    "codes": {
+        "3SRH-TEST1": {
+            "used": false,
+            "device": null
+        },
+        "3SRH-TEST2": {
+            "used": false,
+            "device": null
+        }
+    },
+    "blacklisted_codes": [],
+    "blacklisted_devices": []
+}
