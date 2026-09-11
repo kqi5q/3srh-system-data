@@ -47,6 +47,10 @@
         "3SRH-7EVGI": {
             "used": false,
             "device": null
+        },
+        "3SRH-COARG": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [],
