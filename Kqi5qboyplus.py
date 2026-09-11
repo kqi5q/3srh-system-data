@@ -69,7 +69,8 @@ class ConfirmSaveView(discord.ui.View):
 
     @discord.ui.button(label="نعم، حفظ الأكواد", style=discord.ButtonStyle.green, custom_id="save_codes_yes")
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(ephemeral=True)
+        # الاستجابة الفورية لمنع خطأ انتهاء المهلة من ديسكورد
+        await interaction.response.defer(thinking=True, ephemeral=True)
         try:
             url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
             headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
@@ -104,7 +105,10 @@ class ConfirmSaveView(discord.ui.View):
                 codes_list_str = "\n".join([f"`{c}`" for c in self.generated_codes])
                 for child in self.children:
                     child.disabled = True
-                await interaction.message.edit(view=self)
+                try:
+                    await interaction.message.edit(view=self)
+                except Exception:
+                    pass
                 await interaction.followup.send(
                     f"✅ **تم اعتماد وحفظ {self.count} كود بنجاح إلى السحابة!**\n\nالأكواد:\n{codes_list_str}",
                     ephemeral=True
@@ -118,7 +122,10 @@ class ConfirmSaveView(discord.ui.View):
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         for child in self.children:
             child.disabled = True
-        await interaction.response.edit_message(content="❌ تم إلغاء العملية، ولن يتم رفع أو حفظ أي كود للسحابة.", view=self)
+        try:
+            await interaction.response.edit_message(content="❌ تم إلغاء العملية، ولن يتم رفع أو حفظ أي كود للسحابة.", view=self)
+        except Exception:
+            await interaction.response.send_message("❌ تم إلغاء العملية، ولن يتم رفع أو حفظ أي كود للسحابة.", ephemeral=True)
 
 
 @client.tree.command(name="generate", description="توليد أكواد تفعيل ومراجعتها قبل إضافتها للسحابة")
@@ -369,7 +376,7 @@ async def clear_used_codes(interaction: discord.Interaction):
         else:
             await interaction.followup.send("❌ فشل التحديث في غيت هب.", ephemeral=True)
     except Exception as e:
-        await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
+    await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
 
 
 @client.event
