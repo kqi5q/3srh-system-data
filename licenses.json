@@ -1,10 +1,5 @@
 {
-    "codes": {
-        "3SRH-Y2XNJ": {
-            "used": false,
-            "device": null
-        }
-    },
+    "codes": {},
     "blacklisted_codes": [],
     "blacklisted_devices": []
 }
