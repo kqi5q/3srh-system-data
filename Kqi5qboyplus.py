@@ -60,65 +60,317 @@ def generate_random_code():
     return f"3SRH-{part}"
 
 
-@client.tree.command(name="generate", description="توليد أكواد تفعيل جديدة وإضافتها تلقائياً للسحابة")
+# كلاس الأزرار لتأكيد أو إلغاء حفظ الأكواد المولدة
+class ConfirmSaveView(discord.ui.View):
+    def __init__(self, generated_codes, count):
+        super().__init__(timeout=60)
+        self.generated_codes = generated_codes
+        self.count = count
+
+    @discord.ui.button(label="نعم، حفظ الأكواد", style=discord.ButtonStyle.green, custom_id="save_codes_yes")
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        try:
+            url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+            headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
+            r = requests.get(url, headers=headers)
+
+            if r.status_code != 200:
+                await interaction.followup.send("❌ فشل الاتصال بغيت هب لجلب ملف الأكواد.", ephemeral=True)
+                return
+
+            file_data = r.json()
+            sha = file_data["sha"]
+            db = json.loads(base64.b64decode(file_data["content"]).decode("utf-8"))
+
+            if "codes" not in db:
+                db["codes"] = {}
+
+            for code in self.generated_codes:
+                db["codes"][code] = {
+                    "used": False,
+                    "device": None
+                }
+
+            new_content = base64.b64encode(json.dumps(db, indent=4).encode("utf-8")).decode("utf-8")
+            update_data = {
+                "message": f"Generated {self.count} new license codes via Discord command",
+                "content": new_content,
+                "sha": sha,
+            }
+            update_r = requests.put(url, headers=headers, json=update_data)
+
+            if update_r.status_code in [200, 201]:
+                codes_list_str = "\n".join([f"`{c}`" for c in self.generated_codes])
+                for child in self.children:
+                    child.disabled = True
+                await interaction.message.edit(view=self)
+                await interaction.followup.send(
+                    f"✅ **تم اعتماد وحفظ {self.count} كود بنجاح إلى السحابة!**\n\nالأكواد:\n{codes_list_str}",
+                    ephemeral=True
+                )
+            else:
+                await interaction.followup.send("❌ فشل حفظ الأكواد الجديدة في غيت هب.", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ حدث خطأ غير متوقع: {str(e)}", ephemeral=True)
+
+    @discord.ui.button(label="لا، إلغاء", style=discord.ButtonStyle.red, custom_id="save_codes_no")
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        for child in self.children:
+            child.disabled = True
+        await interaction.message.edit(view=self)
+        await interaction.response.send_message("❌ تم إلغاء العملية، ولن يتم رفع أو حفظ أي كود للسحابة.", ephemeral=True)
+
+
+@client.tree.command(name="generate", description="توليد أكواد تفعيل ومراجعتها قبل إضافتها للسحابة")
 @app_commands.describe(count="عدد الأكواد التي تريد توليدها")
 async def generate_codes(interaction: discord.Interaction, count: int = 1):
     if count < 1 or count > 20:
         await interaction.response.send_message("❌ يمكنك توليد ما بين 1 إلى 20 كوداً في المره الواحدة فقط.", ephemeral=True)
         return
 
-    await interaction.response.defer(thinking=True, ephemeral=True)
+    # توليد الأكواد مؤقتاً لعرضها للمستخدم قبل الحفظ
+    new_generated_codes = [generate_random_code() for _ in range(count)]
+    codes_list_str = "\n".join([f"`{c}`" for c in new_generated_codes])
 
+    view = ConfirmSaveView(new_generated_codes, count)
+    await interaction.response.send_message(
+        f"⚠️ **تم توليد الأكواد التالية مؤقتاً. هل تريد حفظها ورفعها للسحابة؟**\n\n{codes_list_str}",
+        view=view,
+        ephemeral=True
+    )
+
+
+@client.tree.command(name="stats", description="عرض إحصائيات الأكواد والنظام بالكامل")
+async def stats_command(interaction: discord.Interaction):
+    await interaction.response.defer(thinking=True, ephemeral=True)
     try:
         url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
         headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
         r = requests.get(url, headers=headers)
-
         if r.status_code != 200:
-            await interaction.followup.send("❌ فشل الاتصال بغيت هب لجلب ملف الأكواد.", ephemeral=True)
+            await interaction.followup.send("❌ فشل الاتصال بغيت هب لجلب الإحصائيات.", ephemeral=True)
+            return
+        db = json.loads(base64.b64decode(r.json()["content"]).decode("utf-8"))
+        
+        codes = db.get("codes", {})
+        total_codes = len(codes)
+        used_codes = sum(1 for c in codes.values() if c.get("used"))
+        unused_codes = total_codes - used_codes
+        b_codes = len(db.get("blacklisted_codes", []))
+        b_devices = len(db.get("blacklisted_devices", []))
+
+        msg = (
+            f"📊 **إحصائيات نظام 3SRH Manager:**\n\n"
+            f"🔹 إجمالي الأكواد: `{total_codes}`\n"
+            f"🟢 الأكواد المتاحة: `{unused_codes}`\n"
+            f"🔴 الأكواد المستخدمة: `{used_codes}`\n"
+            f"🚫 الأكواد المحظورة: `{b_codes}`\n"
+            f"💻 الأجهزة المحظورة: `{b_devices}`"
+        )
+        await interaction.followup.send(msg, ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
+
+
+@client.tree.command(name="check", description="التحقق من حالة كود معين")
+@app_commands.describe(code="الكود المراد فحصه")
+async def check_code(interaction: discord.Interaction, code: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    try:
+        url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+        headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
+        r = requests.get(url, headers=headers)
+        if r.status_code != 200:
+            await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
+            return
+        db = json.loads(base64.b64decode(r.json()["content"]).decode("utf-8"))
+        codes = db.get("codes", {})
+        
+        if code not in codes:
+            await interaction.followup.send(f"❌ الكود `{code}` غير موجود في النظام.", ephemeral=True)
             return
 
+        info = codes[code]
+        used = info.get("used", False)
+        device = info.get("device")
+        status = "مستخدم 🔴" if used else "متاح 🟢"
+        
+        msg = (
+            f"🔍 **معلومات الكود `{code}`:**\n\n"
+            f"📌 الحالة: {status}\n"
+            f"💻 الجهاز المرتبط: `{device if device else 'لا يوجد'}`"
+        )
+        await interaction.followup.send(msg, ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
+
+
+@client.tree.command(name="delete", description="حذف كود معين بشكل نهائي من النظام")
+@app_commands.describe(code="الكود المراد حذفه")
+async def delete_code(interaction: discord.Interaction, code: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    try:
+        url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+        headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
+        r = requests.get(url, headers=headers)
+        if r.status_code != 200:
+            await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
+            return
         file_data = r.json()
         sha = file_data["sha"]
-        content_decoded = base64.b64decode(file_data["content"]).decode("utf-8")
-        db = json.loads(content_decoded)
+        db = json.loads(base64.b64decode(file_data["content"]).decode("utf-8"))
+        
+        if "codes" not in db or code not in db["codes"]:
+            await interaction.followup.send(f"❌ الكود `{code}` غير موجود أصلاً.", ephemeral=True)
+            return
 
-        if "codes" not in db:
-            db["codes"] = {}
-
-        new_generated_codes = []
-
-        for _ in range(count):
-            while True:
-                code = generate_random_code()
-                if code not in db["codes"]:
-                    break
-            
-            db["codes"][code] = {
-                "used": False,
-                "device": None
-            }
-            new_generated_codes.append(code)
+        del db["codes"][code]
 
         new_content = base64.b64encode(json.dumps(db, indent=4).encode("utf-8")).decode("utf-8")
         update_data = {
-            "message": f"Generated {count} new license codes via Discord command",
+            "message": f"Delete code: {code}",
             "content": new_content,
             "sha": sha,
         }
         update_r = requests.put(url, headers=headers, json=update_data)
-
         if update_r.status_code in [200, 201]:
-            codes_list_str = "\n".join([f"`{c}`" for c in new_generated_codes])
-            await interaction.followup.send(
-                f"✅ **تم توليد وإضافة {count} كود بنجاح إلى السحابة!**\n\nالأكواد الجديدة:\n{codes_list_str}",
-                ephemeral=True
-            )
+            await interaction.followup.send(f"🗑️ تم حذف الكود `{code}` نهائياً من السحابة بنجاح!", ephemeral=True)
         else:
-            await interaction.followup.send("❌ فشل حفظ الأكواد الجديدة في غيت هب.", ephemeral=True)
-
+            await interaction.followup.send("❌ فشل حفظ التعديل في غيت هب.", ephemeral=True)
     except Exception as e:
-        await interaction.followup.send(f"❌ حدث خطأ غير متوقع: {str(e)}", ephemeral=True)
+        await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
+
+
+@client.tree.command(name="resetdevice", description="فك ارتباط الكود بجهاز العميل وإرجاعه متاحاً")
+@app_commands.describe(code="الكود المراد تصفير ارتباطه")
+async def reset_device(interaction: discord.Interaction, code: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    try:
+        url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+        headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
+        r = requests.get(url, headers=headers)
+        if r.status_code != 200:
+            await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
+            return
+        file_data = r.json()
+        sha = file_data["sha"]
+        db = json.loads(base64.b64decode(file_data["content"]).decode("utf-8"))
+        
+        if "codes" not in db or code not in db["codes"]:
+            await interaction.followup.send(f"❌ الكود `{code}` غير موجود.", ephemeral=True)
+            return
+
+        db["codes"][code]["used"] = False
+        db["codes"][code]["device"] = None
+
+        new_content = base64.b64encode(json.dumps(db, indent=4).encode("utf-8")).decode("utf-8")
+        update_data = {
+            "message": f"Reset device binding for code: {code}",
+            "content": new_content,
+            "sha": sha,
+        }
+        update_r = requests.put(url, headers=headers, json=update_data)
+        if update_r.status_code in [200, 201]:
+            await interaction.followup.send(f"🔄 تم تصفير الكود `{code}` وفك ارتباطه بالجهاز بنجاح وأصبح متاحاً!", ephemeral=True)
+        else:
+            await interaction.followup.send("❌ فشل الحفظ في غيت هب.", ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
+
+
+@client.tree.command(name="blacklisted", description="عرض قائمة الأكواد والأجهزة المحظورة")
+async def blacklisted_list(interaction: discord.Interaction):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    try:
+        url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+        headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
+        r = requests.get(url, headers=headers)
+        if r.status_code != 200:
+            await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
+            return
+        db = json.loads(base64.b64decode(r.json()["content"]).decode("utf-8"))
+        
+        b_codes = db.get("blacklisted_codes", [])
+        b_devices = db.get("blacklisted_devices", [])
+
+        codes_str = "\n".join([f"`{c}`" for c in b_codes]) if b_codes else "لا توجد أكواد محظورة"
+        devices_str = "\n".join([f"`{d}`" for d in b_devices]) if b_devices else "لا توجد أجهزة محظورة"
+
+        msg = (
+            f"🚫 **قائمة الحظر في النظام:**\n\n"
+            f"📌 **الأكواد المحظورة:**\n{codes_str}\n\n"
+            f"💻 **الأجهزة المحظورة:**\n{devices_str}"
+        )
+        await interaction.followup.send(msg, ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
+
+
+@client.tree.command(name="finddevice", description="البحث عن الكود المرتبط باسم جهاز معين")
+@app_commands.describe(device="اسم الجهاز أو جزء منه للبحث")
+async def find_device(interaction: discord.Interaction, device: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    try:
+        url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+        headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
+        r = requests.get(url, headers=headers)
+        if r.status_code != 200:
+            await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
+            return
+        db = json.loads(base64.b64decode(r.json()["content"]).decode("utf-8"))
+        codes = db.get("codes", {})
+        
+        found = []
+        for c, info in codes.items():
+            dev_name = info.get("device")
+            if dev_name and device.lower() in dev_name.lower():
+                found.append(f"الكود: `{c}` | الجهاز: `{dev_name}`")
+
+        if found:
+            found_str = "\n".join(found)
+            await interaction.followup.send(f"🔍 **نتائج البحث عن الجهاز `{device}`:**\n\n{found_str}", ephemeral=True)
+        else:
+            await interaction.followup.send(f"❌ لم يتم العثور على أي كود مرتبط بجهاز يحتوي على الاسم `{device}`.", ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
+
+
+@client.tree.command(name="clearused", description="حذف جميع الأكواد المستخدمة مسبقاً دفعة واحدة")
+async def clear_used_codes(interaction: discord.Interaction):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    try:
+        url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+        headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
+        r = requests.get(url, headers=headers)
+        if r.status_code != 200:
+            await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
+            return
+        file_data = r.json()
+        sha = file_data["sha"]
+        db = json.loads(base64.b64decode(file_data["content"]).decode("utf-8"))
+        
+        if "codes" not in db:
+            await interaction.followup.send("❌ لا توجد أكواد في قاعدة البيانات.", ephemeral=True)
+            return
+
+        old_count = len(db["codes"])
+        db["codes"] = {c: info for c, info in db["codes"].items() if not info.get("used", False)}
+        removed_count = old_count - len(db["codes"])
+
+        new_content = base64.b64encode(json.dumps(db, indent=4).encode("utf-8")).decode("utf-8")
+        update_data = {
+            "message": f"Cleared {removed_count} used codes",
+            "content": new_content,
+            "sha": sha,
+        }
+        update_r = requests.put(url, headers=headers, json=update_data)
+        if update_r.status_code in [200, 201]:
+            await interaction.followup.send(f"🧹 تم بنجاح حذف `{removed_count}` كود مستخدم وتطهير السحابة!", ephemeral=True)
+        else:
+            await interaction.followup.send("❌ فشل التحديث في غيت هب.", ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
 
 
 @client.event
