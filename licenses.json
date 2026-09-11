@@ -9,8 +9,8 @@
             "device": null
         },
         "3SRH-Q5GUA": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
+            "used": false,
+            "device": null
         },
         "3SRH-EL8A4": {
             "used": false,
@@ -29,10 +29,6 @@
             "device": null
         }
     },
-    "blacklisted_codes": [
-        "3SRH-Q5GUA"
-    ],
-    "blacklisted_devices": [
-        "DESKTOP-G6CJ661"
-    ]
+    "blacklisted_codes": [],
+    "blacklisted_devices": []
 }
