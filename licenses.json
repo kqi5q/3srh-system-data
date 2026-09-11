@@ -55,6 +55,10 @@
         "3SRH-SN8EC": {
             "used": false,
             "device": null
+        },
+        "3SRH-JWJFS": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [],
