@@ -103,13 +103,11 @@ class ConfirmSaveView(discord.ui.View):
             if update_r.status_code in [200, 201]:
                 codes_list_str = "\n".join([f"`{c}`" for c in self.generated_codes])
                 
-                # حذف رسالة الاختيار الأصلية
                 try:
                     await interaction.message.delete()
                 except Exception:
                     pass
 
-                # إرسال رسالة نجاح نهائية ونظيفة بدون أزرار
                 await interaction.followup.send(
                     f"✅ **تم رفع وحفظ {self.count} كود بنجاح إلى السحابة!**\n\nالأكواد المضافة:\n{codes_list_str}",
                     ephemeral=True
@@ -128,17 +126,64 @@ class ConfirmSaveView(discord.ui.View):
         await interaction.response.send_message("❌ تم إلغاء العملية، ولن يتم رفع أو حفظ أي كود للسحابة.", ephemeral=True)
 
 
-# كلاس لعرض الأكواد غير المستخدمة مع زر حذف لكل كود
+# كلاس لعرض الأكواد غير المستخدمة مع زر حذف الكل وأزرار الحذف الفردية
 class UnusedCodesView(discord.ui.View):
     def __init__(self, codes_list):
         super().__init__(timeout=180)
-        # إضافة زر حذف لكل كود (بحد أقصى 25 زراً في الديسكورد)
-        for code in codes_list[:25]:
+        
+        # إضافة زر "حذف الكل" في البداية
+        self.add_item(DeleteAllUnusedButton())
+
+        # إضافة زر حذف لكل كود (بحد أقصى 24 كوداً إضافياً ليصبح المجموع 25 زرا كحد أقصى مسموح في ديسكورد)
+        for code in codes_list[:24]:
             self.add_item(UnusedDeleteButton(code))
+
+class DeleteAllUnusedButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="🗑️ حذف الكل غير المستخدم", style=discord.ButtonStyle.danger, custom_id="del_all_unused", row=0)
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        try:
+            url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+            headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
+            r = requests.get(url, headers=headers)
+            if r.status_code != 200:
+                await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
+                return
+            file_data = r.json()
+            sha = file_data["sha"]
+            db = json.loads(base64.b64decode(file_data["content"]).decode("utf-8"))
+
+            if "codes" in db:
+                old_count = len(db["codes"])
+                # الاحتفاظ فقط بالأكواد المستخدمة أو المحفوظة كـ used=True
+                db["codes"] = {c: info for c, info in db["codes"].items() if info.get("used", False)}
+                removed_count = old_count - len(db["codes"])
+
+                new_content = base64.b64encode(json.dumps(db, indent=4).encode("utf-8")).decode("utf-8")
+                update_data = {
+                    "message": f"Deleted all {removed_count} unused codes",
+                    "content": new_content,
+                    "sha": sha,
+                }
+                update_r = requests.put(url, headers=headers, json=update_data)
+                if update_r.status_code in [200, 201]:
+                    try:
+                        await interaction.message.delete()
+                    except Exception:
+                        pass
+                    await interaction.followup.send(f"🗑️ تم بنجاح حذف جميع الأكواد غير المستخدمة (`{removed_count}` كود) من السحابة!", ephemeral=True)
+                else:
+                    await interaction.followup.send("❌ فشل الحفظ في غيت هب.", ephemeral=True)
+            else:
+                await interaction.followup.send("❌ لا توجد قاعدة بيانات للأكواد.", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
 
 class UnusedDeleteButton(discord.ui.Button):
     def __init__(self, code):
-        super().__init__(label=f"🗑️ حذف {code}", style=discord.ButtonStyle.danger, custom_id=f"del_unused_{code}")
+        super().__init__(label=f"حذف {code}", style=discord.ButtonStyle.secondary, custom_id=f"del_unused_{code}")
         self.code_to_delete = code
 
     async def callback(self, interaction: discord.Interaction):
@@ -196,7 +241,7 @@ async def generate_codes(interaction: discord.Interaction, count: int = 1):
     )
 
 
-@client.tree.command(name="unused", description="عرض الأكواد غير المستخدمة مع زر حذف لكل كود")
+@client.tree.command(name="unused", description="عرض الأكواد غير المستخدمة مع زر لحذفها فردياً أو دفعة واحدة")
 async def unused_command(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True, ephemeral=True)
     try:
@@ -209,15 +254,14 @@ async def unused_command(interaction: discord.Interaction):
         db = json.loads(base64.b64decode(r.json()["content"]).decode("utf-8"))
         codes = db.get("codes", {})
         
-        # استخراج الأكواد غير المستخدمة فقط
         unused_list = [c for c, info in codes.items() if not info.get("used", False)]
         
         if not unused_list:
             await interaction.followup.send("🟢 لا توجد أي أكواد غير مستخدمة حالياً.", ephemeral=True)
             return
 
-        codes_str = "\n".join([f"`{c}`" for c in unused_list[:25]])
-        note = "\n\n*(ملاحظة: يُعرض كحد أقصى 25 زر حذف في الرسالة الواحدة)*" if len(unused_list) > 25 else ""
+        codes_str = "\n".join([f"`{c}`" for c in unused_list[:24]])
+        note = "\n\n*(ملاحظة: يُعرض كحد أقصى 24 كوداً مع أزرار الحذف في الرسالة الواحدة)*" if len(unused_list) > 24 else ""
         
         view = UnusedCodesView(unused_list)
         msg = (
