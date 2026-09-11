@@ -1,5 +1,10 @@
 {
-    "codes": {},
+    "codes": {
+        "3SRH-HJABM": {
+            "used": false,
+            "device": null
+        }
+    },
     "blacklisted_codes": [],
     "blacklisted_devices": []
 }
