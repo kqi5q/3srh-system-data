@@ -38,5 +38,7 @@
         }
     },
     "blacklisted_codes": [],
-    "blacklisted_devices": []
+    "blacklisted_devices": [
+        "DESKTOP-G6CJ661"
+    ]
 }
