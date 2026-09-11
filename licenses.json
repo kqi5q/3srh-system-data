@@ -27,6 +27,10 @@
         "3SRH-H209E": {
             "used": false,
             "device": null
+        },
+        "3SRH-NNBAM": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [],
