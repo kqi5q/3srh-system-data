@@ -39,6 +39,10 @@
         "3SRH-780JH": {
             "used": false,
             "device": null
+        },
+        "3SRH-BNDJC": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [],
