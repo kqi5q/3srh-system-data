@@ -69,7 +69,7 @@ class ConfirmSaveView(discord.ui.View):
 
     @discord.ui.button(label="نعم، حفظ الأكواد", style=discord.ButtonStyle.green, custom_id="save_codes_yes")
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
         try:
             url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
             headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
@@ -118,8 +118,7 @@ class ConfirmSaveView(discord.ui.View):
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         for child in self.children:
             child.disabled = True
-        await interaction.message.edit(view=self)
-        await interaction.response.send_message("❌ تم إلغاء العملية، ولن يتم رفع أو حفظ أي كود للسحابة.", ephemeral=True)
+        await interaction.response.edit_message(content="❌ تم إلغاء العملية، ولن يتم رفع أو حفظ أي كود للسحابة.", view=self)
 
 
 @client.tree.command(name="generate", description="توليد أكواد تفعيل ومراجعتها قبل إضافتها للسحابة")
@@ -378,7 +377,7 @@ async def on_interaction(interaction: discord.Interaction):
     if interaction.type == discord.InteractionType.component:
         custom_id = interaction.data.get("custom_id")
 
-        if custom_id.startswith("ban_target_") or custom_id.startswith("unban_target_") or custom_id.startswith("recycle_target_"):
+        if custom_id and (custom_id.startswith("ban_target_") or custom_id.startswith("unban_target_") or custom_id.startswith("recycle_target_")):
             
             if custom_id.startswith("recycle_target_"):
                 action_type = "recycle"
