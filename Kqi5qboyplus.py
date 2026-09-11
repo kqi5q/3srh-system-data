@@ -105,11 +105,11 @@ class ConfirmSaveView(discord.ui.View):
                 for child in self.children:
                     child.disabled = True
                 
-                # استخدام edit_original_response بدلاً من edit للمرسل المؤقت
-                try:
-                    await interaction.edit_original_response(content=f"✅ **تم اعتماد وحفظ {self.count} كود بنجاح إلى السحابة!**\n\nالأكواد:\n{codes_list_str}", view=self)
-                except Exception:
-                    await interaction.followup.send(f"✅ **تم حفظ {self.count} كود بنجاح!**\n\nالأكواد:\n{codes_list_str}", ephemeral=True)
+                # إرسال رسالة نجاح مستقلة وبدون محاولة تعديل الرسالة القديمة
+                await interaction.followup.send(
+                    f"✅ **تم اعتماد وحفظ {self.count} كود بنجاح إلى السحابة!**\n\nالأكواد:\n{codes_list_str}",
+                    ephemeral=True
+                )
             else:
                 await interaction.followup.send("❌ فشل حفظ الأكواد الجديدة في غيت هب.", ephemeral=True)
         except Exception as e:
@@ -119,10 +119,7 @@ class ConfirmSaveView(discord.ui.View):
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         for child in self.children:
             child.disabled = True
-        try:
-            await interaction.response.edit_message(content="❌ تم إلغاء العملية، ولن يتم رفع أو حفظ أي كود للسحابة.", view=self)
-        except Exception:
-            await interaction.response.send_message("❌ تم إلغاء العملية، ولن يتم رفع أو حفظ أي كود للسحابة.", ephemeral=True)
+        await interaction.response.send_message("❌ تم إلغاء العملية، ولن يتم رفع أو حفظ أي كود للسحابة.", ephemeral=True)
 
 
 @client.tree.command(name="generate", description="توليد أكواد تفعيل ومراجعتها قبل إضافتها للسحابة")
