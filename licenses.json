@@ -51,6 +51,10 @@
         "3SRH-COARG": {
             "used": false,
             "device": null
+        },
+        "3SRH-SN8EC": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [],
