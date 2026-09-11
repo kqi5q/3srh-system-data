@@ -43,6 +43,10 @@
         "3SRH-BNDJC": {
             "used": false,
             "device": null
+        },
+        "3SRH-7EVGI": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [],
