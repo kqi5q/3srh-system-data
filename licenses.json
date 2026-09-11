@@ -59,6 +59,10 @@
         "3SRH-JWJFS": {
             "used": false,
             "device": null
+        },
+        "3SRH-212J0": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [],
