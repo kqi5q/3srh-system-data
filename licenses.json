@@ -15,6 +15,10 @@
         "3SRH-EL8A4": {
             "used": false,
             "device": null
+        },
+        "3SRH-M7JNP": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [],
