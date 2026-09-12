@@ -511,9 +511,12 @@ async def on_interaction(interaction: discord.Interaction):
     if interaction.type == discord.InteractionType.component:
         custom_id = interaction.data.get("custom_id")
 
-        if custom_id and (custom_id.startswith("ban_target_") or custom_id.startswith("unban_target_") or custom_id.startswith("recycle_target_")):
+        if custom_id and (custom_id.startswith("ban_target_") or custom_id.startswith("unban_target_") or custom_id.startswith("recycle_target_") or custom_id.startswith("kick_target_")):
             
-            if custom_id.startswith("recycle_target_"):
+            if custom_id.startswith("kick_target_"):
+                action_type = "kick"
+                prefix = "kick_target_"
+            elif custom_id.startswith("recycle_target_"):
                 action_type = "recycle"
                 prefix = "recycle_target_"
             elif custom_id.startswith("unban_target_"):
@@ -540,7 +543,21 @@ async def on_interaction(interaction: discord.Interaction):
                     content_decoded = base64.b64decode(file_data["content"]).decode("utf-8")
                     db = json.loads(content_decoded)
 
-                    if action_type == "recycle":
+                    if action_type == "kick":
+                        if "blacklisted_codes" not in db:
+                            db["blacklisted_codes"] = []
+                        if "blacklisted_devices" not in db:
+                            db["blacklisted_devices"] = []
+
+                        if b_code not in db["blacklisted_codes"]:
+                            db["blacklisted_codes"].append(b_code)
+                        if b_device and b_device not in db["blacklisted_devices"]:
+                            db["blacklisted_devices"].append(b_device)
+
+                        action_msg = "تم طردك من الاداة"
+                        commit_msg = f"Kick client & ban code/device: {b_code} / {b_device}"
+
+                    elif action_type == "recycle":
                         if b_device and b_device not in db.get("blacklisted_devices", []):
                             db["blacklisted_devices"].append(b_device)
                         
