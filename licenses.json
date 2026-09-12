@@ -17,8 +17,8 @@
             "device": "DESKTOP-G6CJ661"
         },
         "3SRH-N41OQ": {
-            "used": false,
-            "device": null
+            "used": true,
+            "device": "DESKTOP-G6CJ661"
         }
     },
     "blacklisted_codes": [],
