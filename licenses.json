@@ -43,6 +43,10 @@
         "3SRH-XNKYU": {
             "used": true,
             "device": "DESKTOP-G6CJ661"
+        },
+        "3SRH-545U5": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [
