@@ -31,6 +31,10 @@
         "3SRH-ZYW79": {
             "used": true,
             "device": "DESKTOP-G6CJ661"
+        },
+        "3SRH-NOYUR": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [
