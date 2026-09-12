@@ -418,6 +418,16 @@ async def wipe_client_cmd(interaction: discord.Interaction, code: str, reason: s
         await interaction.followup.send("❌ فشل التحديث في السحابة.", ephemeral=True)
 
 
+@client.tree.command(name="sync", description="تحديث ومزامنة الأوامر فوراً")
+async def sync_commands(interaction: discord.Interaction):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    try:
+        await client.tree.sync()
+        await interaction.followup.send("✅ **تم مزامنة وتحديث جميع الأوامر بنجاح!**", ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ فشل مزامنة الأوامر: {e}", ephemeral=True)
+
+
 @client.tree.command(name="stats", description="إحصائيات النظام بالكامل")
 async def stats_command(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True, ephemeral=True)
