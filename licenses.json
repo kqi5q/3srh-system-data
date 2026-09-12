@@ -91,6 +91,10 @@
         "3SRH-VL7V2": {
             "used": true,
             "device": "DESKTOP-G6CJ661"
+        },
+        "3SRH-365WP": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [
