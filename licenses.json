@@ -17,6 +17,12 @@
             "device": "DESKTOP-G6CJ661",
             "ip": "Unknown",
             "country": "Unknown"
+        },
+        "3SRH-CNLCH": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "country": null
         }
     },
     "blacklisted_codes": [],
