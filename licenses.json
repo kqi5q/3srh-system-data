@@ -47,6 +47,10 @@
         "3SRH-545U5": {
             "used": true,
             "device": "DESKTOP-G6CJ661"
+        },
+        "3SRH-UDYQ5": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [
