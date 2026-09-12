@@ -20,6 +20,13 @@
             "ip": "188.53.166.143",
             "port": 49667,
             "country": "SA"
+        },
+        "3SRH-CJ3KX": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [],
