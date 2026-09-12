@@ -55,6 +55,10 @@
         "3SRH-DAX1X": {
             "used": true,
             "device": "DESKTOP-G6CJ661"
+        },
+        "3SRH-DQZYP": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [
