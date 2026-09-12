@@ -375,96 +375,8 @@ async def delete_code(interaction: discord.Interaction, code: str):
         await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
 
 
-# كلاس الأزرار التفاعلية لأمر resetdevice (إعادة الاستخدام أو الحذف)
-class ResetDeviceView(discord.ui.View):
-    def __init__(self, code: str, repo_owner: str, repo_name: str, file_path: str, github_token: str):
-        super().__init__(timeout=60)
-        self.code = code
-        self.repo_owner = repo_owner
-        self.repo_name = repo_name
-        self.file_path = file_path
-        self.github_token = github_token
-
-    @discord.ui.button(label="🔄 الاحتفاظ بالكود (إعادة تعيين)", style=discord.ButtonStyle.green, custom_id="reset_keep_code")
-    async def keep_code(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
-        try:
-            url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/contents/{self.file_path}"
-            headers = {"Authorization": f"Bearer {self.github_token}"}
-            r = requests.get(url, headers=headers)
-            if r.status_code != 200:
-                await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
-                return
-            file_data = r.json()
-            sha = file_data["sha"]
-            db = json.loads(base64.b64decode(file_data["content"]).decode("utf-8"))
-            
-            if "codes" not in db or self.code not in db["codes"]:
-                await interaction.followup.send(f"❌ الكود `{self.code}` غير موجود.", ephemeral=True)
-                return
-
-            db["codes"][self.code]["used"] = False
-            db["codes"][self.code]["device"] = None
-
-            new_content = base64.b64encode(json.dumps(db, indent=4).encode("utf-8")).decode("utf-8")
-            update_data = {
-                "message": f"Reset device binding for code: {self.code}",
-                "content": new_content,
-                "sha": sha,
-            }
-            update_r = requests.put(url, headers=headers, json=update_data)
-            if update_r.status_code in [200, 201]:
-                try:
-                    await interaction.message.delete()
-                except Exception:
-                    pass
-                await interaction.followup.send(f"🔄 تم تصفير الكود `{self.code}` وفك ارتباطه بالجهاز بنجاح وأصبح متاحاً للاستخدام!", ephemeral=True)
-            else:
-                await interaction.followup.send("❌ فشل الحفظ في غيت هب.", ephemeral=True)
-        except Exception as e:
-            await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
-
-    @discord.ui.button(label="🗑️ حذف الكود نهائياً", style=discord.ButtonStyle.red, custom_id="reset_delete_code")
-    async def delete_code_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
-        try:
-            url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/contents/{self.file_path}"
-            headers = {"Authorization": f"Bearer {self.github_token}"}
-            r = requests.get(url, headers=headers)
-            if r.status_code != 200:
-                await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
-                return
-            file_data = r.json()
-            sha = file_data["sha"]
-            db = json.loads(base64.b64decode(file_data["content"]).decode("utf-8"))
-            
-            if "codes" not in db or self.code not in db["codes"]:
-                await interaction.followup.send(f"❌ الكود `{self.code}` غير موجود أصلاً.", ephemeral=True)
-                return
-
-            del db["codes"][self.code]
-
-            new_content = base64.b64encode(json.dumps(db, indent=4).encode("utf-8")).decode("utf-8")
-            update_data = {
-                "message": f"Delete code via resetdevice: {self.code}",
-                "content": new_content,
-                "sha": sha,
-            }
-            update_r = requests.put(url, headers=headers, json=update_data)
-            if update_r.status_code in [200, 201]:
-                try:
-                    await interaction.message.delete()
-                except Exception:
-                    pass
-                await interaction.followup.send(f"🗑️ تم حذف الكود `{self.code}` نهائياً من النظام بناءً على اختيارك!", ephemeral=True)
-            else:
-                await interaction.followup.send("❌ فشل الحفظ في غيت هب.", ephemeral=True)
-        except Exception as e:
-            await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
-
-
-@client.tree.command(name="resetdevice", description="فك ارتباط الكود بجهاز العميل مع خيار الاحتفاظ به أو حذفه")
-@app_commands.describe(code="الكود المراد إدارته")
+@client.tree.command(name="resetdevice", description="فك ارتباط الكود بجهاز العميل وإرجاعه متاحاً")
+@app_commands.describe(code="الكود المراد تصفير ارتباطه")
 async def reset_device(interaction: discord.Interaction, code: str):
     await interaction.response.defer(thinking=True, ephemeral=True)
     try:
@@ -474,20 +386,28 @@ async def reset_device(interaction: discord.Interaction, code: str):
         if r.status_code != 200:
             await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
             return
-        db = json.loads(base64.b64decode(r.json()["content"]).decode("utf-8"))
+        file_data = r.json()
+        sha = file_data["sha"]
+        db = json.loads(base64.b64decode(file_data["content"]).decode("utf-8"))
         
         if "codes" not in db or code not in db["codes"]:
-            await interaction.followup.send(f"❌ الكود `{code}` غير موجود في النظام.", ephemeral=True)
+            await interaction.followup.send(f"❌ الكود `{code}` غير موجود.", ephemeral=True)
             return
 
-        view = ResetDeviceView(code, REPO_OWNER, REPO_NAME, FILE_PATH, GITHUB_TOKEN)
-        await interaction.followup.send(
-            f"⚠️ **الرجاء اختيار الإجراء المناسب للكود `{code}`:**\n"
-            f"- هل تريد **الاحتفاظ به** وإعادة تعيينه ليصبح متاحاً؟\n"
-            f"- أم تريد **حذفه نهائياً** من السحابة؟",
-            view=view,
-            ephemeral=True
-        )
+        db["codes"][code]["used"] = False
+        db["codes"][code]["device"] = None
+
+        new_content = base64.b64encode(json.dumps(db, indent=4).encode("utf-8")).decode("utf-8")
+        update_data = {
+            "message": f"Reset device binding for code: {code}",
+            "content": new_content,
+            "sha": sha,
+        }
+        update_r = requests.put(url, headers=headers, json=update_data)
+        if update_r.status_code in [200, 201]:
+            await interaction.followup.send(f"🔄 تم تصفير الكود `{code}` وفك ارتباطه بالجهاز بنجاح وأصبح متاحاً!", ephemeral=True)
+        else:
+            await interaction.followup.send("❌ فشل الحفظ في غيت هب.", ephemeral=True)
     except Exception as e:
         await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
 
