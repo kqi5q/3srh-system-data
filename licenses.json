@@ -1,5 +1,12 @@
 {
-    "codes": {},
+    "codes": {
+        "3SRH-VMYXL": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "country": null
+        }
+    },
     "blacklisted_codes": [],
     "blacklisted_devices": [],
     "kick_reasons": {
