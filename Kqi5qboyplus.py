@@ -384,6 +384,40 @@ async def kick_client_cmd(interaction: discord.Interaction, code: str, mode: app
         await interaction.followup.send("❌ فشل التحديث في السحابة.", ephemeral=True)
 
 
+@client.tree.command(name="wipe", description="حذف بيانات الأداة والترخيص من جهاز العميل عن بعد")
+@app_commands.describe(code="الكود المراد حذف ملفات أداته", reason="سبب الحذف")
+async def wipe_client_cmd(interaction: discord.Interaction, code: str, reason: str = "تم حذف بيانات الأداة من المالك"):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    if not db:
+        await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
+        return
+
+    code = code.upper()
+    if "codes" not in db or code not in db["codes"]:
+        await interaction.followup.send(f"❌ الكود `{code}` غير موجود في قاعدة البيانات.", ephemeral=True)
+        return
+
+    device_name = db["codes"][code].get("device", "غير معروف")
+
+    if "remote_wipes" not in db:
+        db["remote_wipes"] = {}
+
+    unique_wipe_id = str(int(time.time()))
+    db["remote_wipes"][code] = {
+        "msg": reason,
+        "id": unique_wipe_id
+    }
+
+    if save_db(db, sha, url, headers, f"Remote wipe command for code {code}"):
+        await interaction.followup.send(
+            f"🔥 **تم إرسال أمر الحذف والتدمير لجهاز العميل بنجاح!**\n📌 الكود: `{code}`\n💻 الجهاز: `{device_name}`\n💬 السبب: `{reason}`",
+            ephemeral=True
+        )
+    else:
+        await interaction.followup.send("❌ فشل التحديث في السحابة.", ephemeral=True)
+
+
 @client.tree.command(name="stats", description="إحصائيات النظام بالكامل")
 async def stats_command(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True, ephemeral=True)
