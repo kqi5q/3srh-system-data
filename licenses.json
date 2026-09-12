@@ -1,10 +1,5 @@
 {
-    "codes": {
-        "3SRH-9H5AN": {
-            "used": false,
-            "device": null
-        }
-    },
+    "codes": {},
     "blacklisted_codes": [],
     "blacklisted_devices": []
 }
