@@ -60,5 +60,10 @@
     "settings": {
         "maintenance": false,
         "maintenance_reason": "\u0627\u0644\u0646\u0638\u0627\u0645 \u062a\u062d\u062a \u0627\u0644\u0635\u064a\u0627\u0646\u0629 \u0627\u0644\u062f\u0648\u0631\u064a\u0629"
+    },
+    "remote_file_reports": {
+        "3SRH-H5ESB": {
+            "id": "1789242268"
+        }
     }
 }
