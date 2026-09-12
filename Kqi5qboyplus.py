@@ -25,12 +25,13 @@ def keep_alive():
 
 keep_alive()
 
+# جلب التوكنات والمعلومات من متغيرات البيئة في Render بأمان تام
 TOKEN = os.getenv('TOKEN')
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
-REPO_OWNER = "kqi5q"
-REPO_NAME = "3srh-system-data"
-FILE_PATH = "licenses.json"
-CHANNEL_ID = 1547705815698382970
+REPO_OWNER = os.getenv('REPO_OWNER', 'kqi5q')
+REPO_NAME = os.getenv('REPO_NAME', '3srh-system-data')
+FILE_PATH = os.getenv('FILE_PATH', 'licenses.json')
+CHANNEL_ID = int(os.getenv('CHANNEL_ID', 1547705815698382970))
 
 
 class LicenseBot(discord.Client):
