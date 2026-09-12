@@ -60,6 +60,58 @@ def generate_random_code():
     return f"3SRH-{part}"
 
 
+# كلاس الأزرار الأربعة لتنبيهات التفعيل (حظر، إلغاء وتصفير، حظر الجهاز واستعادة الكود، وطرد العميل)
+class ActivationActionView(discord.ui.View):
+    def __init__(self, code, device):
+        super().__init__(timeout=None) # أزرار دائمة أو حسب رغبتك
+        
+        # زر الحظر
+        self.add_item(discord.ui.Button(
+            label="حظر", 
+            style=discord.ButtonStyle.danger, 
+            custom_id=f"ban_target_{code}_{device}"
+        ))
+        
+        # زر الإلغاء والتصفير
+        self.add_item(discord.ui.Button(
+            label="إلغاء وتصفير", 
+            style=discord.ButtonStyle.success, 
+            custom_id=f"unban_target_{code}_{device}"
+        ))
+        
+        # زر حظر الجهاز واستعادة الكود
+        self.add_item(discord.ui.Button(
+            label="حظر الجهاز واستعادة الكود", 
+            style=discord.ButtonStyle.primary, 
+            custom_id=f"recycle_target_{code}_{device}"
+        ))
+
+        # زر طرد العميل الجديد
+        self.add_item(discord.ui.Button(
+            label="طرد العميل", 
+            style=discord.ButtonStyle.secondary, 
+            custom_id=f"kick_target_{code}_{device}"
+        ))
+
+
+# دالة مساعدة لإرسال تنبيه التفعيل مع الأزرار الأربعة للقناة المحددة
+async def send_activation_alert(code, device_name):
+    channel = client.get_channel(CHANNEL_ID)
+    if channel:
+        embed = discord.Embed(
+            title="⚠️ تنبيه تفعيل جديد لـ 3SRH!",
+            description="تم تفعيل ترخيص جديد بنجاح",
+            color=discord.Color.red()
+        )
+        embed.add_field(name="🔑 الكود المستخدم", value=f"`{code}`", inline=True)
+        embed.add_field(name="💻 اسم الجهاز", value=f"`{device_name}`", inline=True)
+        embed.add_field(name="🌐 الحالة", value="تم قفل الكود على هذا الجهاز بنجاح", inline=False)
+        embed.set_footer(text="3SRH License Management System")
+
+        view = ActivationActionView(code, device_name)
+        await channel.send(embed=embed, view=view)
+
+
 # كلاس الأزرار لحفظ أو إلغاء الأكواد المولدة مع مسح الرسالة القديمة
 class ConfirmSaveView(discord.ui.View):
     def __init__(self, generated_codes, count):
@@ -157,7 +209,6 @@ class DeleteAllUnusedButton(discord.ui.Button):
 
             if "codes" in db:
                 old_count = len(db["codes"])
-                # الاحتفاظ فقط بالأكواد المستخدمة أو المحفوظة كـ used=True
                 db["codes"] = {c: info for c, info in db["codes"].items() if info.get("used", False)}
                 removed_count = old_count - len(db["codes"])
 
