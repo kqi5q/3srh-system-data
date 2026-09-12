@@ -25,7 +25,6 @@ def keep_alive():
 
 keep_alive()
 
-# قراءة البيانات الحساسة من متغيرات البيئة في Render بأمان تام
 TOKEN = os.getenv('TOKEN')
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
 REPO_OWNER = "kqi5q"
@@ -163,8 +162,6 @@ class DeleteAllUnusedButton(discord.ui.Button):
                 except Exception:
                     pass
                 await interaction.followup.send(f"🗑️ تم بنجاح حذف جميع الأكواد غير المستخدمة (`{removed_count}` كود)!", ephemeral=True)
-            else:
-                await interaction.followup.send("❌ فشل الحفظ في غيت هب.", ephemeral=True)
 
 class UnusedDeleteButton(discord.ui.Button):
     def __init__(self, code):
@@ -189,10 +186,8 @@ class UnusedDeleteButton(discord.ui.Button):
 
 
 # ==========================================
-# أوامر البوت (مرتبة ومنظمة بشكل احترافي)
+# أوامر البوت (Slash Commands)
 # ==========================================
-
-# 1. قسم إدارة وتوليد الأكواد
 @client.tree.command(name="generate", description="توليد أكواد تفعيل جديدة ومراجعتها")
 @app_commands.describe(count="عدد الأكواد (من 1 إلى 20)")
 async def generate_codes(interaction: discord.Interaction, count: int = 1):
@@ -241,7 +236,6 @@ async def clear_used_codes(interaction: discord.Interaction):
         await interaction.followup.send("❌ فشل التحديث.", ephemeral=True)
 
 
-# 2. قسم فحص وإدارة الأكواد الفردية
 @client.tree.command(name="check", description="التحقق من حالة كود معين")
 @app_commands.describe(code="الكود المراد فحصه")
 async def check_code(interaction: discord.Interaction, code: str):
@@ -290,7 +284,6 @@ async def reset_device(interaction: discord.Interaction, code: str):
         await interaction.followup.send("❌ فشل الحفظ.", ephemeral=True)
 
 
-# 3. قسم الأمان والحظر (Blacklist & Unban)
 @client.tree.command(name="blacklisted", description="عرض قائمة الأكواد والأجهزة المحظورة")
 async def blacklisted_list(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True, ephemeral=True)
@@ -326,7 +319,43 @@ async def unban_device(interaction: discord.Interaction, device: str):
         await interaction.followup.send("❌ فشل الحفظ.", ephemeral=True)
 
 
-# 4. قسم الإحصائيات والأدوات المساعدة
+# أمر سداسي مخصص لطرد أي عميل بكود محدد مع إمكانية كتابة سبب مخصص
+@client.tree.command(name="kick", description="طرد عميل وحظر كوده مع سبب مخصص")
+@app_commands.describe(code="الكود المراد حظره وطرد صاحبه", reason="سبب الطرد (اختياري)")
+async def kick_client_cmd(interaction: discord.Interaction, code: str, reason: str = "تم طردك من المالك"):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    if not db:
+        await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
+        return
+
+    code = code.upper()
+    if "codes" not in db or code not in db["codes"]:
+        await interaction.followup.send(f"❌ الكود `{code}` غير موجود في النظام.", ephemeral=True)
+        return
+
+    # جلب اسم الجهاز المرتبط للكود قبل حذفه أو حظره
+    device_name = db["codes"][code].get("device", "غير معروف")
+
+    if "blacklisted_codes" not in db:
+        db["blacklisted_codes"] = []
+    if code not in db["blacklisted_codes"]:
+        db["blacklisted_codes"].append(code)
+
+    # حفظ سبب الطرد مؤقتاً في خانة مخصصة داخل السحابة لكي يقرأها العميل وتظهر له بالسبب الذي كتبته
+    if "kick_reasons" not in db:
+        db["kick_reasons"] = {}
+    db["kick_reasons"][code] = reason
+
+    if save_db(db, sha, url, headers, f"Kick code: {code} with reason: {reason}"):
+        await interaction.followup.send(
+            f"👢 **تم طرد المستخدم بنجاح!**\n📌 الكود المحظور: `{code}`\n💻 الجهاز: `{device_name}`\n💬 السبب المرسل: `{reason}`",
+            ephemeral=True
+        )
+    else:
+        await interaction.followup.send("❌ فشل حفظ التحديث في غيت هب.", ephemeral=True)
+
+
 @client.tree.command(name="stats", description="عرض إحصائيات النظام بالكامل")
 async def stats_command(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True, ephemeral=True)
@@ -389,7 +418,13 @@ async def on_interaction(interaction: discord.Interaction):
                 db["blacklisted_codes"] = []
             if b_code not in db["blacklisted_codes"]:
                 db["blacklisted_codes"].append(b_code)
-            action_msg = f"👢 **تم طرد المستخدم بنجاح!**\n📌 الكود: `{b_code}`\n💻 الجهاز: `{b_device or 'غير معروف'}`"
+            
+            # حفظ سبب افتراضي عند الضغط على زر الطرد السريع
+            if "kick_reasons" not in db:
+                db["kick_reasons"] = {}
+            db["kick_reasons"][b_code] = "تم طردك من المالك"
+
+            action_msg = f"👢 **تم طرد المستخدم بنجاح!**\n📌 الكود: `{b_code}`\n💻 الجهاز: `{b_device or 'غير معروف'}`\n💬 السبب: `تم طردك من المالك`"
             commit_msg = f"Kick client: {b_code}"
 
         elif action_type == "recycle":
