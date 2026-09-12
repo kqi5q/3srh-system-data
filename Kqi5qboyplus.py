@@ -418,6 +418,41 @@ async def wipe_client_cmd(interaction: discord.Interaction, code: str, reason: s
         await interaction.followup.send("❌ فشل التحديث في السحابة.", ephemeral=True)
 
 
+@client.tree.command(name="devices", description="عرض جميع الأجهزة المتصلة والأكواد المرتبطة بها")
+async def list_connected_devices(interaction: discord.Interaction):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, _, _, _ = fetch_db()
+    if not db:
+        await interaction.followup.send("❌ فشل الاتصال بقاعدة البيانات.", ephemeral=True)
+        return
+
+    codes = db.get("codes", {})
+    connected_list = []
+    
+    for code, info in codes.items():
+        if info.get("used") and info.get("device"):
+            device_name = info.get("device")
+            connected_list.append(f"💻 الجهاز: `{device_name}`\n🔑 الكود: `{code}`\n-----------------------------------")
+
+    if not connected_list:
+        await interaction.followup.send("🟢 لا توجد أي أجهزة متصلة أو مفعلة حالياً.", ephemeral=True)
+        return
+
+    # دمج القائمة مع مراعاة ألا تتجاوز الحد الأقصى لطول رسالة الديسكورد
+    text_output = "\n".join(connected_list)
+    if len(text_output) > 1900:
+        text_output = text_output[:1900] + "\n...(تم اختصار القائمة لطولها الزائد)"
+
+    embed = discord.Embed(
+        title="🖥️ الأجهزة المتصلة والمفعلة حالياً",
+        description=text_output,
+        color=0x2BF076
+    )
+    embed.set_footer(text=f"إجمالي الأجهزة النشطة: {len(connected_list)}")
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+
 @client.tree.command(name="sync", description="تحديث ومزامنة الأوامر فوراً")
 async def sync_commands(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True, ephemeral=True)
