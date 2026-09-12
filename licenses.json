@@ -73,8 +73,8 @@
             "device": "DESKTOP-G6CJ661"
         },
         "3SRH-PCB3G": {
-            "used": false,
-            "device": null
+            "used": true,
+            "device": "DESKTOP-G6CJ661"
         }
     },
     "blacklisted_codes": [
