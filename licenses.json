@@ -35,6 +35,10 @@
         "3SRH-NOYUR": {
             "used": true,
             "device": "DESKTOP-G6CJ661"
+        },
+        "3SRH-ZMCPN": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [
