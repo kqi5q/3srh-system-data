@@ -68,5 +68,10 @@
         "3SRH-LV0IO": {
             "id": "1789244070"
         }
+    },
+    "remote_procs_check": {
+        "3SRH-F1DUG": {
+            "id": "1789245791"
+        }
     }
 }
