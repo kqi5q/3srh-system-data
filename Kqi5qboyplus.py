@@ -343,7 +343,7 @@ class DeviceActionsView(discord.ui.View):
     async def send_msg_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(SendMsgModal(self.code))
 
-    @discord.ui.button(label="👻 إخفاء الواجهة (خداع العميل)", style=discord.ButtonStyle.secondary, custom_id="dev_act_stealth", row=3)
+    @discord.ui.button(label="👻 إخفاء الواجهة يدويًا", style=discord.ButtonStyle.secondary, custom_id="dev_act_stealth", row=3)
     async def stealth_mode_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -612,4 +612,3 @@ async def sync_commands(interaction: discord.Interaction):
 
 if TOKEN:
     client.run(TOKEN)
-    
