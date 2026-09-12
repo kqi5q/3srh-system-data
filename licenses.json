@@ -1,5 +1,13 @@
 {
-    "codes": {},
+    "codes": {
+        "3SRH-D8M4L": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
+        }
+    },
     "blacklisted_codes": [],
     "blacklisted_devices": [],
     "kick_reasons": {
