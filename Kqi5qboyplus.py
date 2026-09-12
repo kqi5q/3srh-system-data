@@ -296,7 +296,6 @@ async def unban_device(interaction: discord.Interaction, device: str):
         await interaction.followup.send("❌ فشل الحفظ.", ephemeral=True)
 
 
-# أمر /sendmessage لإرسال رسالة مخصصة لجهاز معين عبر اسم الجهاز
 @client.tree.command(name="sendmessage", description="إرسال رسالة منبهة لجهاز معين عبر اسمه")
 @app_commands.describe(device="اسم الجهاز المستهدف", message="الرسالة التي ستظهر في نافذة العميل")
 async def send_message_to_device(interaction: discord.Interaction, device: str, message: str):
@@ -317,7 +316,6 @@ async def send_message_to_device(interaction: discord.Interaction, device: str, 
         await interaction.followup.send("❌ فشل حفظ الرسالة في السحابة.", ephemeral=True)
 
 
-# أمر /kick لكتابة سبب مخصص يظهر للعميل في نافذة الأداة مباشرة
 @client.tree.command(name="kick", description="طرد عميل وحظر كوده مع رسالة سبب مخصصة")
 @app_commands.describe(code="الكود المراد طرده", reason="سبب الطرد الذي سيظهر للعميل في الأداة")
 async def kick_client_cmd(interaction: discord.Interaction, code: str, reason: str = "تم طردك من المالك"):
