@@ -352,7 +352,6 @@ async def kick_client_cmd(interaction: discord.Interaction, code: str, mode: app
     device_name = db["codes"][code].get("device", "غير معروف")
 
     if mode.value == "message":
-        # تخزين السبب في targeted_kick_messages المرتبط بالكود لتستقبله أداة العميل وتغلق نفسها مع إبقاء الكود ساريًا
         if "targeted_kick_messages" not in db:
             db["targeted_kick_messages"] = {}
         db["targeted_kick_messages"][code] = reason
@@ -436,7 +435,6 @@ async def on_interaction(interaction: discord.Interaction):
             return
 
         if action_type == "kick":
-            # زر الطرد التفاعلي من إشعارات البوت يرسل رسالة ويغلق الأداة مع إبقاء الكود شغالاً
             if "targeted_kick_messages" not in db:
                 db["targeted_kick_messages"] = {}
             db["targeted_kick_messages"][b_code] = "تم طردك من المالك"
