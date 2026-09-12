@@ -9,8 +9,8 @@
             "device": null
         },
         "3SRH-X94T9": {
-            "used": false,
-            "device": null
+            "used": true,
+            "device": "DESKTOP-G6CJ661"
         }
     },
     "blacklisted_codes": [],
