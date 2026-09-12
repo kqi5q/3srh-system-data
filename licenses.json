@@ -1,30 +1,5 @@
 {
-    "codes": {
-        "3SRH-OGF5N": {
-            "used": false,
-            "device": null
-        },
-        "3SRH-MWA85": {
-            "used": false,
-            "device": null
-        },
-        "3SRH-X94T9": {
-            "used": false,
-            "device": null
-        },
-        "3SRH-B9H7U": {
-            "used": false,
-            "device": null
-        },
-        "3SRH-VH4QI": {
-            "used": false,
-            "device": null
-        },
-        "3SRH-YQ43C": {
-            "used": false,
-            "device": null
-        }
-    },
+    "codes": {},
     "blacklisted_codes": [
         "3SRH-3W6XA",
         "3SRH-ZYW79",
