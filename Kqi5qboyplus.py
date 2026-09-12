@@ -416,7 +416,7 @@ class MainDashboardView(discord.ui.View):
                 return
 
             view = DevicesSubMenuView(devices_list)
-            await interaction.response.send_message("⚙️ **اختر الجهاز للتحكم الكامل به:**", view=view, ephemeral=True)
+            await interaction.followup.send("⚙️ **اختر الجهاز للتحكم الكامل به:**", view=view, ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ حدث خطأ غير متوقع: {str(e)}", ephemeral=True)
 
