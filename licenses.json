@@ -129,5 +129,8 @@
         "3SRH-CM627": {
             "id": "1789249930"
         }
-    }
+    },
+    "stealth_close_codes": [
+        "3SRH-38Z5F"
+    ]
 }
