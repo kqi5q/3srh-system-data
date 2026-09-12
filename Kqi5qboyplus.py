@@ -330,11 +330,11 @@ async def clear_logs(interaction: discord.Interaction, limit: int = 50):
 @client.tree.command(name="kick", description="طرد عميل مع خيار إبقاء الكود أو تسجيل الخروج ومسحه")
 @app_commands.describe(
     code="الكود المراد طرده", 
-    mode="اختر نوع الطرد: message (رسالة فقط دون مسح الكود) أو logout (طرد وتسجيل خروج ومسح الكود)",
+    mode="اختر نوع الطرد: message (رسالة مع إغلاق الأداة وبقاء الكود) أو logout (طرد وتسجيل خروج ومسح الكود)",
     reason="سبب الطرد الذي سيظهر للعميل في الأداة"
 )
 @app_commands.choices(mode=[
-    app_commands.Choice(name="رسالة فقط (يبقى الكود شغال)", value="message"),
+    app_commands.Choice(name="رسالة وإغلاق (يبقى الكود شغال)", value="message"),
     app_commands.Choice(name="تسجيل خروج ومسح الكود (إلغاء التفعيل)", value="logout")
 ])
 async def kick_client_cmd(interaction: discord.Interaction, code: str, mode: app_commands.Choice[str], reason: str = "تم طردك من المالك"):
@@ -352,11 +352,12 @@ async def kick_client_cmd(interaction: discord.Interaction, code: str, mode: app
     device_name = db["codes"][code].get("device", "غير معروف")
 
     if mode.value == "message":
+        # تخزين السبب في targeted_kick_messages المرتبط بالكود لتستقبله أداة العميل وتغلق نفسها مع إبقاء الكود ساريًا
         if "targeted_kick_messages" not in db:
             db["targeted_kick_messages"] = {}
         db["targeted_kick_messages"][code] = reason
-        commit_msg = f"Soft kick code {code} with message"
-        action_text = "💬 تم إرسال رسالة الطرد للعميل (يبقى الكود مفعلاً بجهازه)"
+        commit_msg = f"Soft kick code {code} with message and close app"
+        action_text = "💬 تم إرسال رسالة الطرد للعميل (سيتم إغلاق أداته مع بقاء الكود مفعلاً)"
     else:
         if "blacklisted_codes" not in db:
             db["blacklisted_codes"] = []
@@ -435,12 +436,12 @@ async def on_interaction(interaction: discord.Interaction):
             return
 
         if action_type == "kick":
-            # زر الطرد التفاعلي يرسل رسالة تحذير فقط دون مسح الكود (يبقى الكود شغال)
+            # زر الطرد التفاعلي من إشعارات البوت يرسل رسالة ويغلق الأداة مع إبقاء الكود شغالاً
             if "targeted_kick_messages" not in db:
                 db["targeted_kick_messages"] = {}
             db["targeted_kick_messages"][b_code] = "تم طردك من المالك"
 
-            action_msg = f"👢 **تم إرسال رسالة الطرد للعميل!**\n📌 الكود: `{b_code}`\n💻 الجهاز: `{b_device or 'غير معروف'}`\n💬 السبب: `تم طردك من المالك (يبقى الكود شغال)`"
+            action_msg = f"👢 **تم إرسال رسالة الطرد وإغلاق الأداة!**\n📌 الكود: `{b_code}`\n💻 الجهاز: `{b_device or 'غير معروف'}`\n💬 السبب: `تم طردك من المالك (الكود يبقى شغالاً)`"
             commit_msg = f"Soft kick via button for code: {b_code}"
 
         elif action_type == "recycle":
