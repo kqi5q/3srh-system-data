@@ -7,6 +7,10 @@
         "3SRH-MWA85": {
             "used": false,
             "device": null
+        },
+        "3SRH-X94T9": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [],
