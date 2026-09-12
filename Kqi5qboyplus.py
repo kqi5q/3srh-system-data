@@ -134,8 +134,8 @@ class CodesSubMenuView(discord.ui.View):
         if not unused_list:
             await interaction.followup.send("🟢 لا توجد أكواد غير مستخدمة.", ephemeral=True)
             return
-        codes_str = "\n".join([f"`{c}`" for c in unused_list[:25]])
-        await interaction.followup.send(f"🟢 **الأكواد غير المستخدمة (المتاحة):**\n{codes_str}", ephemeral=True)
+        view = UnusedManagementView(unused_list)
+        await interaction.followup.send("🟢 **الأكواد غير المستخدمة (المتاحة - اختر للحذف):**", view=view, ephemeral=True)
 
     @discord.ui.button(label="🔴 المستخدمة", style=discord.ButtonStyle.secondary, custom_id="sub_codes_used", row=0)
     async def used_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -163,7 +163,7 @@ class CodesSubMenuView(discord.ui.View):
             await interaction.followup.send("🟢 لا توجد أكواد محظورة حالياً.", ephemeral=True)
             return
         view = BlacklistManagementView(b_codes)
-        await interaction.followup.send("🚫 **الأكواد المحظورة (اضغط لفك الحظر أو مسح الكل):**", view=view, ephemeral=True)
+        await interaction.followup.send("🚫 **الأكواد المحظورة (اختر لفك الحظر أو الحذف النهائي):**", view=view, ephemeral=True)
 
     @discord.ui.button(label="⚡ توليد كود سريع", style=discord.ButtonStyle.primary, custom_id="sub_codes_gen", row=1)
     async def gen_quick_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -182,17 +182,17 @@ class CodesSubMenuView(discord.ui.View):
             await interaction.followup.send("❌ فشل حفظ الكود.", ephemeral=True)
 
 
-# 2. إدارة الأكواد المحظورة
-class BlacklistManagementView(discord.ui.View):
-    def __init__(self, b_codes):
+# 2. إدارة الأكواد غير المستخدمة (المتاحة) مع خيارات الحذف
+class UnusedManagementView(discord.ui.View):
+    def __init__(self, unused_codes):
         super().__init__(timeout=180)
-        self.add_item(ClearAllBlacklistButton())
-        for code in b_codes[:24]:
-            self.add_item(UnbanCodeButton(code))
+        for code in unused_codes[:25]:
+            self.add_item(DeleteUnusedCodeButton(code))
 
-class ClearAllBlacklistButton(discord.ui.Button):
-    def __init__(self):
-        super().__init__(label="🔓 إلغاء الحظر عن الكل", style=discord.ButtonStyle.success, custom_id="unban_all_codes", row=0)
+class DeleteUnusedCodeButton(discord.ui.Button):
+    def __init__(self, code):
+        super().__init__(label=f"🗑️ حذف: {code}", style=discord.ButtonStyle.danger, custom_id=f"del_Unused_{code}")
+        self.code = code
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(thinking=True, ephemeral=True)
@@ -200,19 +200,37 @@ class ClearAllBlacklistButton(discord.ui.Button):
         if not db:
             await interaction.followup.send("❌ خطأ بالاتصال.", ephemeral=True)
             return
-        db["blacklisted_codes"] = []
-        db["blacklisted_devices"] = []
-        if save_db(db, sha, url, headers, "Clear all blacklisted codes and devices"):
-            await interaction.followup.send("✅ تم مسح وإلغاء حظر جميع الأكواد والأجهزة بنجاح!", ephemeral=True)
-        else:
-            await interaction.followup.send("❌ فشل الحفظ.", ephemeral=True)
+        if self.code in db.get("codes", {}):
+            del db["codes"][self.code]
+            if save_db(db, sha, url, headers, f"Delete unused code {self.code}"):
+                await interaction.followup.send(f"🗑️ تم حذف الكود المتاح `{self.code}` نهائياً!", ephemeral=True)
+                return
+        await interaction.followup.send("❌ الكود غير موجود أو تم حذفه مسبقاً.", ephemeral=True)
 
-class UnbanCodeButton(discord.ui.Button):
+
+# 3. إدارة الأكواد المحظورة (فك الحظر أو الحذف النهائي)
+class BlacklistManagementView(discord.ui.View):
+    def __init__(self, b_codes):
+        super().__init__(timeout=180)
+        for code in b_codes[:24]:
+            self.add_item(BlacklistActionSelectButton(code))
+
+class BlacklistActionSelectButton(discord.ui.Button):
     def __init__(self, code):
-        super().__init__(label=f"فك حظر: {code}", style=discord.ButtonStyle.secondary, custom_id=f"unban_bcode_{code}")
+        super().__init__(label=f"🚫 {code}", style=discord.ButtonStyle.secondary, custom_id=f"b_select_{code}")
         self.code = code
 
     async def callback(self, interaction: discord.Interaction):
+        view = BlacklistOptionsView(self.code)
+        await interaction.response.send_message(f"⚙️ **خيارات الكود المحظور:** `{self.code}`", view=view, ephemeral=True)
+
+class BlacklistOptionsView(discord.ui.View):
+    def __init__(self, code):
+        super().__init__(timeout=60)
+        self.code = code
+
+    @discord.ui.button(label="🔓 فك الحظر", style=discord.ButtonStyle.success, custom_id="b_opt_unban")
+    async def unban_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if not db:
@@ -223,13 +241,29 @@ class UnbanCodeButton(discord.ui.Button):
         if self.code in db.get("codes", {}):
             db["codes"][self.code]["used"] = False
             db["codes"][self.code]["device"] = None
-        if save_db(db, sha, url, headers, f"Unban specific code {self.code}"):
-            await interaction.followup.send(f"✅ تم فك الحظر عن الكود `{self.code}` وأصبح متاحاً!", ephemeral=True)
+        if save_db(db, sha, url, headers, f"Unban code {self.code}"):
+            await interaction.followup.send(f"✅ تم فك الحظر عن الكود `{self.code}` وإرجاعه متاحاً!", ephemeral=True)
+        else:
+            await interaction.followup.send("❌ فشل الحفظ.", ephemeral=True)
+
+    @discord.ui.button(label="🗑️ حذف نهائي", style=discord.ButtonStyle.danger, custom_id="b_opt_delete")
+    async def delete_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if not db:
+            await interaction.followup.send("❌ خطأ.", ephemeral=True)
+            return
+        if self.code in db.get("blacklisted_codes", []):
+            db["blacklisted_codes"].remove(self.code)
+        if self.code in db.get("codes", {}):
+            del db["codes"][self.code]
+        if save_db(db, sha, url, headers, f"Permanently delete blacklisted code {self.code}"):
+            await interaction.followup.send(f"🗑️ تم حذف الكود المحظور `{self.code}` نهائياً من السحابة!", ephemeral=True)
         else:
             await interaction.followup.send("❌ فشل الحفظ.", ephemeral=True)
 
 
-# 3. قائمة خيارات إدارة الأجهزة الفرعية
+# 4. قائمة خيارات إدارة الأجهزة الفرعية
 class DevicesSubMenuView(discord.ui.View):
     def __init__(self, devices_list):
         super().__init__(timeout=180)
@@ -250,7 +284,6 @@ class DeviceManageButton(discord.ui.Button):
             ephemeral=True
         )
 
-# أزرار التحكم بالجهاز المحدد (حظر، فك حظر، طرد بدون حظر)
 class DeviceActionsView(discord.ui.View):
     def __init__(self, code, device):
         super().__init__(timeout=60)
@@ -308,7 +341,7 @@ class DeviceActionsView(discord.ui.View):
         await interaction.followup.send("❌ فشل الطرد.", ephemeral=True)
 
 
-# 4. واجهة لوحة التحكم الرئيسية (زرين رئيسيين فقط للأكواد والأجهزة + الصيانة والنسخ الاحتياطي)
+# 5. واجهة لوحة التحكم الرئيسية
 class MainDashboardView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -399,58 +432,8 @@ async def unused_command(interaction: discord.Interaction):
     if not unused_list:
         await interaction.followup.send("🟢 لا توجد أكواد غير مستخدمة.", ephemeral=True)
         return
-    codes_str = "\n".join([f"`{c}`" for c in unused_list[:24]])
-    await interaction.followup.send(f"🟢 **الأكواد المتاحة:**\n📊 العدد: `{len(unused_list)}`\n\n{codes_str}", view=UnusedCodesView(unused_list), ephemeral=True)
-
-
-class UnusedCodesView(discord.ui.View):
-    def __init__(self, codes_list):
-        super().__init__(timeout=180)
-        self.add_item(DeleteAllUnusedButton())
-        for code in codes_list[:24]:
-            self.add_item(UnusedDeleteButton(code))
-
-class DeleteAllUnusedButton(discord.ui.Button):
-    def __init__(self):
-        super().__init__(label="🗑️ حذف الكل غير المستخدم", style=discord.ButtonStyle.danger, custom_id="del_all_unused", row=0)
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
-        if not db:
-            await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
-            return
-
-        if "codes" in db:
-            old_count = len(db["codes"])
-            db["codes"] = {c: info for c, info in db["codes"].items() if info.get("used", False)}
-            removed = old_count - len(db["codes"])
-            if save_db(db, sha, url, headers, f"Deleted {removed} unused codes"):
-                try:
-                    await interaction.message.delete()
-                except Exception:
-                    pass
-                await interaction.followup.send(f"🗑️ تم حذف {removed} كود غير مستخدم!", ephemeral=True)
-
-class UnusedDeleteButton(discord.ui.Button):
-    def __init__(self, code):
-        super().__init__(label=f"حذف {code}", style=discord.ButtonStyle.secondary, custom_id=f"del_unused_{code}")
-        self.code_to_delete = code
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
-        if not db:
-            await interaction.followup.send("❌ فشل الاتصال.", ephemeral=True)
-            return
-        if "codes" in db and self.code_to_delete in db["codes"]:
-            del db["codes"][self.code_to_delete]
-            if save_db(db, sha, url, headers, f"Delete unused code: {self.code_to_delete}"):
-                try:
-                    await interaction.message.delete()
-                except Exception:
-                    pass
-                await interaction.followup.send(f"🗑️ تم حذف الكود `{self.code_to_delete}`!", ephemeral=True)
+    view = UnusedManagementView(unused_list)
+    await interaction.followup.send(f"🟢 **الأكواد المتاحة (اختر للحذف):**\n📊 العدد: `{len(unused_list)}`", view=view, ephemeral=True)
 
 
 @client.tree.command(name="clearused", description="حذف جميع الأكواد المستخدمة دفعة واحدة")
@@ -522,9 +505,12 @@ async def blacklisted_list(interaction: discord.Interaction):
     if not db:
         await interaction.followup.send("❌ خطأ بالاتصال.", ephemeral=True)
         return
-    b_codes = "\n".join([f"`{c}`" for c in db.get("blacklisted_codes", [])]) or "لا توجد"
-    b_devices = "\n".join([f"`{d}`" for d in db.get("blacklisted_devices", [])]) or "لا توجد"
-    await interaction.followup.send(f"🚫 **قائمة الحظر:**\n\n📌 **الأكواد:**\n{b_codes}\n\n💻 **الأجهزة:**\n{b_devices}", ephemeral=True)
+    b_codes = db.get("blacklisted_codes", [])
+    if not b_codes:
+        await interaction.followup.send("🟢 لا توجد أكواد محظورة حالياً.", ephemeral=True)
+        return
+    view = BlacklistManagementView(b_codes)
+    await interaction.followup.send("🚫 **الأكواد المحظورة (اختر لفك الحظر أو الحذف):**", view=view, ephemeral=True)
 
 
 @client.tree.command(name="unban", description="إزالة الحظر عن جهاز معين")
