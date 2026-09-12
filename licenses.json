@@ -1,10 +1,5 @@
 {
-    "codes": {
-        "3SRH-0MNHA": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        }
-    },
+    "codes": {},
     "blacklisted_codes": [],
     "blacklisted_devices": []
 }
