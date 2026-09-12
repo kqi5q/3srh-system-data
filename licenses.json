@@ -59,6 +59,10 @@
         "3SRH-DQZYP": {
             "used": true,
             "device": "DESKTOP-G6CJ661"
+        },
+        "3SRH-DKX1Z": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [
