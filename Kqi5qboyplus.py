@@ -60,33 +60,29 @@ def generate_random_code():
     return f"3SRH-{part}"
 
 
-# كلاس الأزرار الأربعة لتنبيهات التفعيل (حظر، إلغاء وتصفير، حظر الجهاز واستعادة الكود، وطرد العميل)
+# كلاس الأزرار الأربعة لتنبيهات التفعيل
 class ActivationActionView(discord.ui.View):
     def __init__(self, code, device):
-        super().__init__(timeout=None) # أزرار دائمة أو حسب رغبتك
+        super().__init__(timeout=None)
         
-        # زر الحظر
         self.add_item(discord.ui.Button(
             label="حظر", 
             style=discord.ButtonStyle.danger, 
             custom_id=f"ban_target_{code}_{device}"
         ))
         
-        # زر الإلغاء والتصفير
         self.add_item(discord.ui.Button(
             label="إلغاء وتصفير", 
             style=discord.ButtonStyle.success, 
             custom_id=f"unban_target_{code}_{device}"
         ))
         
-        # زر حظر الجهاز واستعادة الكود
         self.add_item(discord.ui.Button(
             label="حظر الجهاز واستعادة الكود", 
             style=discord.ButtonStyle.primary, 
             custom_id=f"recycle_target_{code}_{device}"
         ))
 
-        # زر طرد العميل الجديد
         self.add_item(discord.ui.Button(
             label="طرد العميل", 
             style=discord.ButtonStyle.secondary, 
@@ -94,7 +90,6 @@ class ActivationActionView(discord.ui.View):
         ))
 
 
-# دالة مساعدة لإرسال تنبيه التفعيل مع الأزرار الأربعة للقناة المحددة
 async def send_activation_alert(code, device_name):
     channel = client.get_channel(CHANNEL_ID)
     if channel:
@@ -112,7 +107,6 @@ async def send_activation_alert(code, device_name):
         await channel.send(embed=embed, view=view)
 
 
-# كلاس الأزرار لحفظ أو إلغاء الأكواد المولدة مع مسح الرسالة القديمة
 class ConfirmSaveView(discord.ui.View):
     def __init__(self, generated_codes, count):
         super().__init__(timeout=60)
@@ -178,15 +172,10 @@ class ConfirmSaveView(discord.ui.View):
         await interaction.response.send_message("❌ تم إلغاء العملية، ولن يتم رفع أو حفظ أي كود للسحابة.", ephemeral=True)
 
 
-# كلاس لعرض الأكواد غير المستخدمة مع زر حذف الكل وأزرار الحذف الفردية
 class UnusedCodesView(discord.ui.View):
     def __init__(self, codes_list):
         super().__init__(timeout=180)
-        
-        # إضافة زر "حذف الكل" في البداية
         self.add_item(DeleteAllUnusedButton())
-
-        # إضافة زر حذف لكل كود (بحد أقصى 24 كوداً إضافياً ليصبح المجموع 25 زرا كحد أقصى مسموح في ديسكورد)
         for code in codes_list[:24]:
             self.add_item(UnusedDeleteButton(code))
 
@@ -463,6 +452,52 @@ async def reset_device(interaction: discord.Interaction, code: str):
         await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
 
 
+@client.tree.command(name="unban", description="إزالة الحظر عن جهاز معين")
+@app_commands.describe(device="اسم أو رقم الجهاز المراد فك الحظر عنه")
+async def unban_device(interaction: discord.Interaction, device: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    try:
+        url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+        headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
+        r = requests.get(url, headers=headers)
+        if r.status_code != 200:
+            await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
+            return
+        file_data = r.json()
+        sha = file_data["sha"]
+        db = json.loads(base64.b64decode(file_data["content"]).decode("utf-8"))
+        
+        b_devices = db.get("blacklisted_devices", [])
+        
+        # البحث عن الجهاز المتطابق (مطابقة تامة أو تقريبية)
+        matched_device = None
+        for d in b_devices:
+            if device.lower() == d.lower():
+                matched_device = d
+                break
+
+        if not matched_device:
+            await interaction.followup.send(f"❌ الجهاز `{device}` غير موجود في قائمة الأجهزة المحظورة.", ephemeral=True)
+            return
+
+        b_devices.remove(matched_device)
+        db["blacklisted_devices"] = b_devices
+
+        new_content = base64.b64encode(json.dumps(db, indent=4).encode("utf-8")).decode("utf-8")
+        update_data = {
+            "message": f"Unban device: {matched_device}",
+            "content": new_content,
+            "sha": sha,
+        }
+        update_r = requests.put(url, headers=headers, json=update_data)
+        if update_r.status_code in [200, 201]:
+            await interaction.followup.send(f"✅ **تم إزالة الحظر عن الجهاز بنجاح!**\n💻 اسم/رقم الجهاز: `{matched_device}`", ephemeral=True)
+        else:
+            await interaction.followup.send("❌ فشل الحفظ في غيت هب.", ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
+
+
 @client.tree.command(name="blacklisted", description="عرض قائمة الأكواد والأجهزة المحظورة")
 async def blacklisted_list(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True, ephemeral=True)
@@ -597,16 +632,13 @@ async def on_interaction(interaction: discord.Interaction):
                     if action_type == "kick":
                         if "blacklisted_codes" not in db:
                             db["blacklisted_codes"] = []
-                        if "blacklisted_devices" not in db:
-                            db["blacklisted_devices"] = []
 
+                        # حظر الكود فقط دون حظر الجهاز
                         if b_code not in db["blacklisted_codes"]:
                             db["blacklisted_codes"].append(b_code)
-                        if b_device and b_device not in db["blacklisted_devices"]:
-                            db["blacklisted_devices"].append(b_device)
 
-                        action_msg = "تم طردك من الاداة"
-                        commit_msg = f"Kick client & ban code/device: {b_code} / {b_device}"
+                        action_msg = f"👢 **تم طرد المستخدم بنجاح!**\n📌 الكود المحظور: `{b_code}`\n💻 رقم/اسم الجهاز المطرود: `{b_device if b_device else 'غير معروف'}`"
+                        commit_msg = f"Kick client & ban code: {b_code}"
 
                     elif action_type == "recycle":
                         if b_device and b_device not in db.get("blacklisted_devices", []):
