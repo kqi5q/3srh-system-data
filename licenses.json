@@ -12,73 +12,9 @@
             "used": false,
             "device": null
         },
-        "3SRH-TEYIA": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-N41OQ": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-3W6XA": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
         "3SRH-B9H7U": {
             "used": false,
             "device": null
-        },
-        "3SRH-ZYW79": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-NOYUR": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-ZMCPN": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-XNKYU": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-545U5": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-UDYQ5": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-DAX1X": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-DQZYP": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-DKX1Z": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-7VLLW": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-ESQOK": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-PCB3G": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-Y318X": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
         },
         "3SRH-VH4QI": {
             "used": false,
@@ -87,18 +23,6 @@
         "3SRH-YQ43C": {
             "used": false,
             "device": null
-        },
-        "3SRH-VL7V2": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-365WP": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
-        },
-        "3SRH-AKWFU": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661"
         }
     },
     "blacklisted_codes": [
