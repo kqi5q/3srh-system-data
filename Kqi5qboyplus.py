@@ -250,6 +250,7 @@ async def delete_code(interaction: discord.Interaction, code: str):
 @client.tree.command(name="resetdevice", description="تصفير ارتباط الكود وإرجاعه متاحاً")
 @app_commands.describe(code="الكود المراد تصفيره")
 async def reset_device(interaction: discord.Interaction, code: str):
+    await interaction.response.defer(thinking=Thread, ephemeral=True) # تم تعديلها لتوافق البوت
     await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
     code = code.upper()
@@ -327,9 +328,18 @@ async def clear_logs(interaction: discord.Interaction, limit: int = 50):
         await interaction.followup.send(f"❌ حدث خطأ أثناء مسح الرسائل: {e}", ephemeral=True)
 
 
-@client.tree.command(name="kick", description="طرد عميل وحظر كوده مع رسالة سبب مخصصة")
-@app_commands.describe(code="الكود المراد طرده", reason="سبب الطرد الذي سيظهر للعميل في الأداة")
-async def kick_client_cmd(interaction: discord.Interaction, code: str, reason: str = "تم طردك من المالك"):
+# أمر /kick المحدث مع خيار نوع الطرد (تسجيل خروج أو رسالة فقط)
+@client.tree.command(name="kick", description="طرد عميل مع خيار إبقاء الكود أو تسجيل الخروج ومسحه")
+@app_commands.describe(
+    code="الكود المراد طرده", 
+    mode="اختر نوع الطرد: message (رسالة فقط دون مسح الكود) أو logout (طرد وتسجيل خروج ومسح الكود)",
+    reason="سبب الطرد الذي سيظهر للعميل في الأداة"
+)
+@app_commands.choices(mode=[
+    app_commands.Choice(name="رسالة فقط (يبقى الكود شغال)", value="message"),
+    app_commands.Choice(name="تسجيل خروج ومسح الكود (إلغاء التفعيل)", value="logout")
+])
+async def kick_client_cmd(interaction: discord.Interaction, code: str, mode: app_commands.Choice[str], reason: str = "تم طردك من المالك"):
     await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
     if not db:
@@ -343,22 +353,38 @@ async def kick_client_cmd(interaction: discord.Interaction, code: str, reason: s
 
     device_name = db["codes"][code].get("device", "غير معروف")
 
-    if "blacklisted_codes" not in db:
-        db["blacklisted_codes"] = []
-    if code not in db["blacklisted_codes"]:
-        db["blacklisted_codes"].append(code)
+    if mode.value == "message":
+        # الطرد عن طريق إرسال رسالة فقط دون مسح الكود أو حظره نهائياً من القائمة
+        if "targeted_kick_messages" not in db:
+            db["targeted_kick_messages"] = {}
+        db["targeted_kick_messages"][code] = reason
+        commit_msg = f"Soft kick code {code} with message"
+        action_text = "💬 تم إرسال رسالة الطرد للعميل (يبقى الكود مفعلاً بجهازه)"
+    else:
+        # الطرد مع تسجيل الخروج (مسح الكود وتصفيره أو وضعه في القائمة السوداء ليطلب تسجيل دخول جديد)
+        if "blacklisted_codes" not in db:
+            db["blacklisted_codes"] = []
+        if code not in db["blacklisted_codes"]:
+            db["blacklisted_codes"].append(code)
 
-    if "kick_reasons" not in db:
-        db["kick_reasons"] = {}
-    db["kick_reasons"][code] = reason
+        if "kick_reasons" not in db:
+            db["kick_reasons"] = {}
+        db["kick_reasons"][code] = reason
+        
+        # تصفير الكود وإلغاء ارتباطه لكي يجبر على تسجيل الدخول بكود جديد
+        db["codes"][code]["used"] = False
+        db["codes"][code]["device"] = None
+        
+        commit_msg = f"Logout and kick code {code}: {reason}"
+        action_text = "👢 تم طرد العميل وتسجيل خروجه ومسح كوده بنجاح!"
 
-    if save_db(db, sha, url, headers, f"Kick code {code}: {reason}"):
+    if save_db(db, sha, url, headers, commit_msg):
         await interaction.followup.send(
-            f"👢 **تم طرد العميل بنجاح!**\n📌 الكود: `{code}`\n💻 الجهاز: `{device_name}`\n💬 السبب المعروض للعميل: `{reason}`",
+            f"✅ **{action_text}**\n📌 الكود: `{code}`\n💻 الجهاز: `{device_name}`\n💬 السبب: `{reason}`",
             ephemeral=True
         )
     else:
-        await interaction.followup.send("❌ فشل التحديث.", ephemeral=True)
+        await interaction.followup.send("❌ فشل التحديث في السحابة.", ephemeral=True)
 
 
 @client.tree.command(name="stats", description="إحصائيات النظام بالكامل")
