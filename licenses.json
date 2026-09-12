@@ -75,6 +75,10 @@
         "3SRH-PCB3G": {
             "used": true,
             "device": "DESKTOP-G6CJ661"
+        },
+        "3SRH-Y318X": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [
