@@ -3,6 +3,10 @@
         "3SRH-OGF5N": {
             "used": false,
             "device": null
+        },
+        "3SRH-MWA85": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [],
