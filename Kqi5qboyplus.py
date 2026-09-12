@@ -122,7 +122,7 @@ class ConfirmSaveView(discord.ui.View):
 class DeviceManagementView(discord.ui.View):
     def __init__(self, devices_list):
         super().__init__(timeout=180)
-        for code, device in devices_list[:25]:  # ديسكورد يتيح كحد أقصى 25 زر في القائمة
+        for code, device in devices_list[:25]:
             self.add_item(DeviceManageButton(code, device))
 
 class DeviceManageButton(discord.ui.Button):
@@ -178,6 +178,90 @@ class DeviceActionView(discord.ui.View):
                 await interaction.followup.send(f"🔥 تم إرسال أمر تدمير ومسح ملفات الأداة للجهاز `{self.device}`!", ephemeral=True)
                 return
         await interaction.followup.send("❌ فشل العملية.", ephemeral=True)
+
+
+# لوحة التحكم الرئيسية المتكاملة تحت StatsGui
+class MainDashboardView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="🖥️ الأجهزة المتصلة", style=discord.ButtonStyle.primary, custom_id="dash_devices")
+    async def devices_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        db, _, _, _ = fetch_db()
+        if not db:
+            await interaction.followup.send("❌ فشل الاتصال بقاعدة البيانات.", ephemeral=True)
+            return
+
+        codes = db.get("codes", {})
+        devices_list = []
+        for code, info in codes.items():
+            if info.get("used") and info.get("device"):
+                devices_list.append((code, info.get("device")))
+
+        if not devices_list:
+            await interaction.followup.send("🟢 لا توجد أي أجهزة متصلة أو مفعلة حالياً.", ephemeral=True)
+            return
+
+        view = DeviceManagementView(devices_list)
+        await interaction.followup.send("⚙️ **اختر الجهاز المطلوب لإدارته:**", view=view, ephemeral=True)
+
+    @discord.ui.button(label="🟢 الأكواد المتاحة", style=discord.ButtonStyle.success, custom_id="dash_unused")
+    async def unused_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        db, _, _, _ = fetch_db()
+        if not db:
+            await interaction.followup.send("❌ خطأ.", ephemeral=True)
+            return
+        unused_list = [c for c, info in db.get("codes", {}).items() if not info.get("used", False)]
+        if not unused_list:
+            await interaction.followup.send("🟢 لا توجد أكواد غير مستخدمة.", ephemeral=True)
+            return
+        codes_str = "\n".join([f"`{c}`" for c in unused_list[:20]])
+        await interaction.followup.send(f"🟢 **الأكواد غير المستخدمة (المتاحة):**\n{codes_str}", ephemeral=True)
+
+    @discord.ui.button(label="🚨 تبديل الصيانة", style=discord.ButtonStyle.danger, custom_id="dash_maint")
+    async def maint_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if not db:
+            await interaction.followup.send("❌ خطأ.", ephemeral=True)
+            return
+        
+        if "settings" not in db:
+            db["settings"] = {}
+        
+        current_status = db["settings"].get("maintenance", False)
+        new_status = not current_status
+        db["settings"]["maintenance"] = new_status
+        
+        msg = f"🚨 تم **تفعيل** وضع الصيانة العام!" if new_status else "🟢 تم **إيقاف** وضع الصيانة وعودة النظام للعمل!"
+        if save_db(db, sha, url, headers, f"Toggle maintenance via dashboard to {new_status}"):
+            await interaction.followup.send(msg, ephemeral=True)
+        else:
+            await interaction.followup.send("❌ فشل حفظ حالة الصيانة.", ephemeral=True)
+
+    @discord.ui.button(label="📦 نسخة احتياطية", style=discord.ButtonStyle.secondary, custom_id="dash_export")
+    async def export_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        db, _, _, _ = fetch_db()
+        if not db:
+            await interaction.followup.send("❌ فشل.", ephemeral=True)
+            return
+        
+        file_content = json.dumps(db, indent=4).encode("utf-8")
+        file_path_temp = "licenses_backup.json"
+        with open(file_path_temp, "wb") as f:
+            f.write(file_content)
+
+        try:
+            await interaction.user.send("📦 **نسخة احتياطية مباشرة من لوحة التحكم:**", file=discord.File(file_path_temp))
+            await interaction.followup.send("✅ تم إرسال النسخة الاحتياطية لخاصك (DM) بنجاح!", ephemeral=True)
+        except Exception:
+            await interaction.followup.send("❌ تعذر الإرسال، تأكد من فتح الرسائل الخاصة في السيرفر.", ephemeral=True)
+        
+        if os.path.exists(file_path_temp):
+            os.remove(file_path_temp)
 
 
 class UnusedCodesView(discord.ui.View):
@@ -462,37 +546,7 @@ async def clear_logs(interaction: discord.Interaction, limit: int = 50):
         await interaction.followup.send(f"❌ حدث خطأ أثناء مسح الرسائل: {e}", ephemeral=True)
 
 
-@client.tree.command(name="devices", description="عرض الأجهزة المتصلة مع لوحة تحكم وإدارة تفاعلية")
-async def list_connected_devices(interaction: discord.Interaction):
-    await interaction.response.defer(thinking=True, ephemeral=True)
-    db, _, _, _ = fetch_db()
-    if not db:
-        await interaction.followup.send("❌ فشل الاتصال بقاعدة البيانات.", ephemeral=True)
-        return
-
-    codes = db.get("codes", {})
-    devices_list = []
-    
-    for code, info in codes.items():
-        if info.get("used") and info.get("device"):
-            devices_list.append((code, info.get("device")))
-
-    if not devices_list:
-        await interaction.followup.send("🟢 لا توجد أي أجهزة متصلة أو مفعلة حالياً.", ephemeral=True)
-        return
-
-    view = DeviceManagementView(devices_list)
-    embed = discord.Embed(
-        title="🖥️ لوحة تحكم وإدارة الأجهزة المتصلة",
-        description="اختر الجهاز من الأزرار أدناه للتحكم به بشكل كامل (تصفير، طرد، أو تدمير الأداة):",
-        color=0x2BF076
-    )
-    embed.set_footer(text=f"إجمالي الأجهزة النشطة: {len(devices_list)}")
-    
-    await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-
-
-@client.tree.command(name="statsgui", description="لوحة إحصائيات تفاعلية ومتكاملة للنظام")
+@client.tree.command(name="statsgui", description="لوحة معلومات وإحصائيات تفاعلية مع أزرار الإدارة الشاملة")
 async def stats_gui_command(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True, ephemeral=True)
     db, _, _, _ = fetch_db()
@@ -509,7 +563,8 @@ async def stats_gui_command(interaction: discord.Interaction):
     maint_status = "🚨 مفعل (الصيانة نشطة)" if db.get("settings", {}).get("maintenance") else "🟢 معطل (النظام يعمل طبيعي)"
 
     embed = discord.Embed(
-        title="📊 لوحة معلومات وإحصائيات نظام 3SRH",
+        title="📊 لوحة التحكم وإحصائيات نظام 3SRH الشاملة",
+        description="استخدم الأزرار أدناه للوصول السريع للأجهزة، الأكواد المتاحة، الصيانة، والنسخ الاحتياطي بضغطة زر واحدة:",
         color=0xA871FF
     )
     embed.add_field(name="📌 إجمالي الأكواد", value=f"`{total}`", inline=True)
@@ -520,7 +575,8 @@ async def stats_gui_command(interaction: discord.Interaction):
     embed.add_field(name="⚙️ حالة الصيانة العامة", value=maint_status, inline=False)
     embed.set_footer(text="3SRH Secure License Management System")
 
-    await interaction.followup.send(embed=embed, ephemeral=True)
+    view = MainDashboardView()
+    await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
 
 @client.tree.command(name="sync", description="تحديث ومزامنة الأوامر فوراً")
