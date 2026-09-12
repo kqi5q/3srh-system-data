@@ -1,12 +1,5 @@
 {
-    "codes": {
-        "3SRH-LV0IO": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "149.102.224.54",
-            "country": "United States"
-        }
-    },
+    "codes": {},
     "blacklisted_codes": [],
     "blacklisted_devices": [],
     "kick_reasons": {
