@@ -1,8 +1,8 @@
 {
     "codes": {
         "3SRH-MCYBH": {
-            "used": false,
-            "device": null
+            "used": true,
+            "device": "DESKTOP-G6CJ661"
         }
     },
     "blacklisted_codes": [],
