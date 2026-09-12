@@ -296,6 +296,27 @@ async def unban_device(interaction: discord.Interaction, device: str):
         await interaction.followup.send("❌ فشل الحفظ.", ephemeral=True)
 
 
+# أمر /sendmessage لإرسال رسالة مخصصة لجهاز معين عبر اسم الجهاز
+@client.tree.command(name="sendmessage", description="إرسال رسالة منبهة لجهاز معين عبر اسمه")
+@app_commands.describe(device="اسم الجهاز المستهدف", message="الرسالة التي ستظهر في نافذة العميل")
+async def send_message_to_device(interaction: discord.Interaction, device: str, message: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    if not db:
+        await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
+        return
+
+    if "targeted_messages" not in db:
+        db["targeted_messages"] = {}
+    
+    db["targeted_messages"][device.strip()] = message
+
+    if save_db(db, sha, url, headers, f"Send message to device {device}: {message}"):
+        await interaction.followup.send(f"📨 **تم إرسال الرسالة بنجاح!**\n💻 الجهاز: `{device}`\n💬 الرسالة: `{message}`", ephemeral=True)
+    else:
+        await interaction.followup.send("❌ فشل حفظ الرسالة في السحابة.", ephemeral=True)
+
+
 # أمر /kick لكتابة سبب مخصص يظهر للعميل في نافذة الأداة مباشرة
 @client.tree.command(name="kick", description="طرد عميل وحظر كوده مع رسالة سبب مخصصة")
 @app_commands.describe(code="الكود المراد طرده", reason="سبب الطرد الذي سيظهر للعميل في الأداة")
