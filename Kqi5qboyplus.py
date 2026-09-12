@@ -137,7 +137,7 @@ class CodesSubMenuView(discord.ui.View):
         if not db:
             await interaction.followup.send("❌ خطأ.", ephemeral=True)
             return
-        used_list = [f"`{c}` | IP: `{info.get('ip', 'Unknown')}:{info.get('port', '8888')}` | الدولة: `{info.get('country', 'Unknown')}`" for c, info in db.get("codes", {}).items() if info.get("used")]
+        used_list = [f"`{c}` | IP : Port: `{info.get('ip', 'Unknown')} : {info.get('port', '8888')}` | الدولة: `{info.get('country', 'Unknown')}`" for c, info in db.get("codes", {}).items() if info.get("used")]
         if not used_list:
             await interaction.followup.send("🔴 لا توجد أكواد مستخدمة حالياً.", ephemeral=True)
             return
@@ -253,7 +253,7 @@ class DeviceManageButton(discord.ui.Button):
     def __init__(self, code, info):
         ip = info.get("ip", "Unknown")
         port = info.get("port", "8888")
-        super().__init__(label=f"🌐 {ip}:{port} ({code})", style=discord.ButtonStyle.secondary, custom_id=f"man_dev_{code}")
+        super().__init__(label=f"🌐 {ip} : {port} ({code})", style=discord.ButtonStyle.secondary, custom_id=f"man_dev_{code}")
         self.code = code
         self.info = info
 
@@ -262,7 +262,7 @@ class DeviceManageButton(discord.ui.Button):
         port = self.info.get('port', '8888')
         view = DeviceActionsView(self.code, self.info.get("device"), ip, port)
         await interaction.response.send_message(
-            f"⚙️ **لوحة التحكم المطلق بالعميل:**\n🔑 الكود: `{self.code}`\n🌐 IP : Port: `{ip}:{port}`\n🌍 الدولة: `{self.info.get('country')}`\n🔒 HWID: `{self.info.get('device')}`", 
+            f"⚙️ **لوحة التحكم المطلق بالعميل:**\n🔑 الكود: `{self.code}`\n🌐 IP : Port $\rightarrow$ `{ip} : {port}`\n🌍 الدولة: `{self.info.get('country')}`\n🔒 HWID: `{self.info.get('device')}`", 
             view=view, 
             ephemeral=True
         )
@@ -486,7 +486,7 @@ async def check_code(interaction: discord.Interaction, code: str):
     info = db["codes"][code.upper()]
     status = "مستخدم 🔴" if info.get("used") else "متاح 🟢"
     await interaction.followup.send(
-        f"🔍 **الكود `{code.upper()}`:**\n📌 الحالة: {status}\n🌐 IP : Port: `{info.get('ip') or 'غير متصل'}:{info.get('port', '8888')}`\n🌍 الدولة: `{info.get('country') or 'غير معروفة'}`\n💻 HWID: `{info.get('device') or 'لا يوجد'}`", 
+        f"🔍 **الكود `{code.upper()}`:**\n📌 الحالة: {status}\n🌐 IP : Port: `{info.get('ip') or 'غير متصل'} : {info.get('port', '8888')}`\n🌍 الدولة: `{info.get('country') or 'غير معروفة'}`\n💻 HWID: `{info.get('device') or 'لا يوجد'}`", 
         ephemeral=True
     )
 
