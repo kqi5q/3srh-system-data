@@ -3,6 +3,7 @@ import base64
 import json
 import random
 import string
+import time
 import discord
 from discord import app_commands
 import requests
@@ -76,15 +77,6 @@ def save_db(db, sha, url, headers, commit_message):
     }
     r = requests.put(url, headers=headers, json=update_data)
     return r.status_code in [200, 201]
-
-
-class ActivationActionView(discord.ui.View):
-    def __init__(self, code, device):
-        super().__init__(timeout=None)
-        self.add_item(discord.ui.Button(label="حظر", style=discord.ButtonStyle.danger, custom_id=f"ban_target_{code}_{device}"))
-        self.add_item(discord.ui.Button(label="إلغاء وتصفير", style=discord.ButtonStyle.success, custom_id=f"unban_target_{code}_{device}"))
-        self.add_item(discord.ui.Button(label="حظر الجهاز واستعادة الكود", style=discord.ButtonStyle.primary, custom_id=f"recycle_target_{code}_{device}"))
-        self.add_item(discord.ui.Button(label="طرد العميل", style=discord.ButtonStyle.secondary, custom_id=f"kick_target_{code}_{device}"))
 
 
 class ConfirmSaveView(discord.ui.View):
@@ -354,9 +346,16 @@ async def kick_client_cmd(interaction: discord.Interaction, code: str, mode: app
     if mode.value == "message":
         if "targeted_kick_messages" not in db:
             db["targeted_kick_messages"] = {}
-        db["targeted_kick_messages"][code] = reason
-        commit_msg = f"Soft kick code {code} with message and close app"
-        action_text = "💬 تم إرسال رسالة الطرد للعميل (سيتم إغلاق أداته مع بقاء الكود مفعلاً)"
+        
+        # إنشاء معرف فريد مبني على الوقت الحالي لكي يعتبر أمر طرد جديد لمرة واحدة فقط
+        unique_kick_id = str(int(time.time()))
+        db["targeted_kick_messages"][code] = {
+            "msg": reason,
+            "id": unique_kick_id
+        }
+        
+        commit_msg = f"Soft kick code {code} with unique id"
+        action_text = "💬 تم إرسال رسالة الطرد للعميل (ستظهر لمرة واحدة فقط وتغلق أداته مع بقاء الكود مفعلاً)"
     else:
         if "blacklisted_codes" not in db:
             db["blacklisted_codes"] = []
@@ -409,75 +408,6 @@ async def find_device(interaction: discord.Interaction, device: str):
         await interaction.followup.send(f"🔍 **نتائج البحث:**\n\n" + "\n".join(found), ephemeral=True)
     else:
         await interaction.followup.send(f"❌ لم يتم العثور على الجهاز.", ephemeral=True)
-
-
-@client.event
-async def on_interaction(interaction: discord.Interaction):
-    if interaction.type == discord.InteractionType.component:
-        custom_id = interaction.data.get("custom_id")
-        if not custom_id:
-            return
-
-        prefixes = ["kick_target_", "recycle_target_", "unban_target_", "ban_target_"]
-        matched_prefix = next((p for p in prefixes if custom_id.startswith(p)), None)
-        if not matched_prefix:
-            return
-
-        action_type = matched_prefix.replace("_target_", "")
-        parts = custom_id.replace(matched_prefix, "").split("_", 1)
-        b_code = parts[0].upper()
-        b_device = parts[1] if len(parts) > 1 else ""
-
-        await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
-        if not db:
-            await interaction.followup.send("❌ خطأ بالاتصال.", ephemeral=True)
-            return
-
-        if action_type == "kick":
-            if "targeted_kick_messages" not in db:
-                db["targeted_kick_messages"] = {}
-            db["targeted_kick_messages"][b_code] = "تم طردك من المالك"
-
-            action_msg = f"👢 **تم إرسال رسالة الطرد وإغلاق الأداة!**\n📌 الكود: `{b_code}`\n💻 الجهاز: `{b_device or 'غير معروف'}`\n💬 السبب: `تم طردك من المالك (الكود يبقى شغالاً)`"
-            commit_msg = f"Soft kick via button for code: {b_code}"
-
-        elif action_type == "recycle":
-            if b_device and b_device not in db.get("blacklisted_devices", []):
-                db["blacklisted_devices"].append(b_device)
-            if b_code in db.get("codes", {}):
-                db["codes"][b_code]["used"] = False
-                db["codes"][b_code]["device"] = None
-            action_msg = f"♻️ تم حظر الجهاز واستعادة الكود!"
-            commit_msg = f"Recycle code: {b_code}"
-
-        elif action_type == "unban":
-            if b_code in db.get("blacklisted_codes", []):
-                db["blacklisted_codes"].remove(b_code)
-            if b_device in db.get("blacklisted_devices", []):
-                db["blacklisted_devices"].remove(b_device)
-            if b_code in db.get("codes", {}):
-                db["codes"][b_code]["used"] = False
-                db["codes"][b_code]["device"] = None
-            action_msg = f"✅ تم إلغاء الحظر والتصفير!"
-            commit_msg = f"Unban code: {b_code}"
-
-        else:  # ban
-            if "blacklisted_codes" not in db:
-                db["blacklisted_codes"] = []
-            if "blacklisted_devices" not in db:
-                db["blacklisted_devices"] = []
-            if b_code not in db["blacklisted_codes"]:
-                db["blacklisted_codes"].append(b_code)
-            if b_device and b_device not in db["blacklisted_devices"]:
-                db["blacklisted_devices"].append(b_device)
-            action_msg = f"🚫 تم الحظر النهائي!"
-            commit_msg = f"Ban code/device: {b_code}"
-
-        if save_db(db, sha, url, headers, commit_msg):
-            await interaction.followup.send(action_msg, ephemeral=True)
-        else:
-            await interaction.followup.send("❌ فشل التحديث.", ephemeral=True)
 
 
 if TOKEN:
