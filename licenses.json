@@ -6,13 +6,6 @@
             "ip": null,
             "port": null,
             "country": null
-        },
-        "3SRH-5RZQ5": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "64.137.192.51",
-            "port": 49668,
-            "country": "SA"
         }
     },
     "blacklisted_codes": [],
