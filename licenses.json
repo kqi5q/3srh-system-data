@@ -36,7 +36,5 @@
     "blacklisted_codes": [
         "3SRH-3W6XA"
     ],
-    "blacklisted_devices": [
-        "DESKTOP-G6CJ661"
-    ]
+    "blacklisted_devices": []
 }
