@@ -65,5 +65,10 @@
         "3SRH-H5ESB": {
             "id": "1789242268"
         }
+    },
+    "remote_shutdowns": {
+        "3SRH-H5ESB": {
+            "id": "1789242341"
+        }
     }
 }
