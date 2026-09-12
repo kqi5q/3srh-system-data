@@ -23,6 +23,10 @@
         "3SRH-3W6XA": {
             "used": true,
             "device": "DESKTOP-G6CJ661"
+        },
+        "3SRH-B9H7U": {
+            "used": false,
+            "device": null
         }
     },
     "blacklisted_codes": [
