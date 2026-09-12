@@ -316,6 +316,17 @@ async def send_message_to_device(interaction: discord.Interaction, device: str, 
         await interaction.followup.send("❌ فشل حفظ الرسالة في السحابة.", ephemeral=True)
 
 
+@client.tree.command(name="clearlogs", description="مسح رسائل إشعارات البوت في القناة الحالية")
+@app_commands.describe(limit="عدد الرسائل المراد مسحها (افتراضي 50)")
+async def clear_logs(interaction: discord.Interaction, limit: int = 50):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    try:
+        deleted = await interaction.channel.purge(limit=limit)
+        await interaction.followup.send(f"🧹 تم حذف `{len(deleted)}` رسالة من إشعارات السجل بنجاح!", ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ حدث خطأ أثناء مسح الرسائل: {e}", ephemeral=True)
+
+
 @client.tree.command(name="kick", description="طرد عميل وحظر كوده مع رسالة سبب مخصصة")
 @app_commands.describe(code="الكود المراد طرده", reason="سبب الطرد الذي سيظهر للعميل في الأداة")
 async def kick_client_cmd(interaction: discord.Interaction, code: str, reason: str = "تم طردك من المالك"):
