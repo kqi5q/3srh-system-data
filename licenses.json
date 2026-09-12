@@ -1,10 +1,5 @@
 {
-    "codes": {
-        "3SRH-0H8OJ": {
-            "used": false,
-            "device": null
-        }
-    },
+    "codes": {},
     "blacklisted_codes": [],
     "blacklisted_devices": [],
     "kick_reasons": {
