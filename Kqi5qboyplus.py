@@ -109,6 +109,14 @@ class ConfirmSaveView(discord.ui.View):
         else:
             await interaction.followup.send("❌ فشل الحفظ في غيت هب.", ephemeral=True)
 
+    @discord.ui.button(label="لا، إلغاء", style=discord.ButtonStyle.red, custom_id="save_codes_no")
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        try:
+            await interaction.message.delete()
+        except Exception:
+            pass
+        await interaction.response.send_message("❌ تم إلغاء العملية.", ephemeral=True)
+
 
 class CodesSubMenuView(discord.ui.View):
     def __init__(self):
