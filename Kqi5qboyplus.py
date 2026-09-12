@@ -25,7 +25,7 @@ def keep_alive():
 
 keep_alive()
 
-# جلب التوكنات والمعلومات من متغيرات البيئة في Render بأمان تام
+# جلب المعلومات من متغيرات البيئة في Render
 TOKEN = os.getenv('TOKEN')
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
 REPO_OWNER = os.getenv('REPO_OWNER', 'kqi5q')
@@ -61,7 +61,7 @@ def generate_random_code():
 def fetch_db():
     url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
     headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
-    r = requests.get(url, headers=headers)
+    r = requests.get(url, headers=headers, timeout=5)
     if r.status_code == 200:
         file_data = r.json()
         db = json.loads(base64.b64decode(file_data["content"]).decode("utf-8"))
@@ -76,7 +76,7 @@ def save_db(db, sha, url, headers, commit_message):
         "content": new_content,
         "sha": sha,
     }
-    r = requests.put(url, headers=headers, json=update_data)
+    r = requests.put(url, headers=headers, json=update_data, timeout=5)
     return r.status_code in [200, 201]
 
 
@@ -366,23 +366,26 @@ class MainDashboardView(discord.ui.View):
     @discord.ui.button(label="💻 الأجهزة والتحكم المطلق", style=discord.ButtonStyle.secondary, custom_id="dash_main_devices", row=0)
     async def devices_menu_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
-        db, _, _, _ = fetch_db()
-        if not db:
-            await interaction.followup.send("❌ فشل الاتصال بقاعدة البيانات.", ephemeral=True)
-            return
+        try:
+            db, _, _, _ = fetch_db()
+            if not db:
+                await interaction.followup.send("❌ فشل الاتصال بقاعدة البيانات من غيت هب.", ephemeral=True)
+                return
 
-        codes = db.get("codes", {})
-        devices_list = []
-        for code, info in codes.items():
-            if info.get("used") and info.get("device"):
-                devices_list.append((code, info))
+            codes = db.get("codes", {})
+            devices_list = []
+            for code, info in codes.items():
+                if info.get("used") and info.get("device"):
+                    devices_list.append((code, info))
 
-        if not devices_list:
-            await interaction.followup.send("🟢 لا توجد أي أجهزة متصلة حالياً.", ephemeral=True)
-            return
+            if not devices_list:
+                await interaction.followup.send("🟢 لا توجد أي أجهزة متصلة حالياً.", ephemeral=True)
+                return
 
-        view = DevicesSubMenuView(devices_list)
-        await interaction.response.send_message("⚙️ **اختر الجهاز للتحكم الكامل به:**", view=view, ephemeral=True)
+            view = DevicesSubMenuView(devices_list)
+            await interaction.followup.send("⚙️ **اختر الجهاز للتحكم الكامل به:**", view=view, ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ حدث خطأ غير متوقع: {str(e)}", ephemeral=True)
 
     @discord.ui.button(label="🚨 تبديل الصيانة", style=discord.ButtonStyle.danger, custom_id="dash_maint", row=1)
     async def maint_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
