@@ -1,10 +1,5 @@
 {
-    "codes": {
-        "3SRH-MCYBH": {
-            "used": false,
-            "device": "KICKED_OUT"
-        }
-    },
+    "codes": {},
     "blacklisted_codes": [],
     "blacklisted_devices": []
 }
