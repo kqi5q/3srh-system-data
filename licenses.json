@@ -1,11 +1,5 @@
 {
     "codes": {
-        "3SRH-DDNQT": {
-            "used": false,
-            "device": null,
-            "ip": null,
-            "country": null
-        },
         "3SRH-H5ESB": {
             "used": true,
             "device": "DESKTOP-G6CJ661",
