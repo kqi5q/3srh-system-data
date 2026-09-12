@@ -34,7 +34,8 @@
         }
     },
     "blacklisted_codes": [
-        "3SRH-3W6XA"
+        "3SRH-3W6XA",
+        "3SRH-ZYW79"
     ],
     "blacklisted_devices": []
 }
