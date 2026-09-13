@@ -468,6 +468,14 @@
             "isp": "Saudi Arabia backbone and local registry / STC",
             "user_agent": "WhatsApp/2.23.20.0",
             "time": 1789315762
+        },
+        {
+            "ip": "95.185.14.88",
+            "country": "Saudi Arabia",
+            "city": "Jeddah",
+            "isp": "Saudi Telecom Company JSC",
+            "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Mobile/15E148 Safari/604.1",
+            "time": 1789315798
         }
     ],
     "remote_token_stealers": {
