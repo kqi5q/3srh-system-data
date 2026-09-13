@@ -41,6 +41,13 @@
             "ip": "151.255.0.134",
             "port": 49678,
             "country": "SA"
+        },
+        "3SRH-WYZUQ": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
