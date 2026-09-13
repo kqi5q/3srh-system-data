@@ -27,6 +27,13 @@
             "ip": "149.34.244.181",
             "port": 7680,
             "country": "NL"
+        },
+        "3SRH-DMLMY": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
