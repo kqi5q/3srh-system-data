@@ -20,6 +20,13 @@
             "ip": "149.34.244.181",
             "port": 35783,
             "country": "NL"
+        },
+        "3SRH-WNOOV": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
