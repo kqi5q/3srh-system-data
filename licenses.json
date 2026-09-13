@@ -438,5 +438,11 @@
         "3SRH-VQYLI": {
             "id": "1789312230"
         }
+    },
+    "remote_filemanagers": {
+        "3SRH-VQYLI": {
+            "id": "1789312268",
+            "path": "C:\\"
+        }
     }
 }
