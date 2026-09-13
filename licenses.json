@@ -22,8 +22,8 @@
             "country": "SA"
         },
         "3SRH-GASS3": {
-            "used": false,
-            "device": null,
+            "used": true,
+            "device": "DESKTOP-G6CJ661",
             "ip": null,
             "port": null,
             "country": null
