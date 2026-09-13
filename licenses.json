@@ -487,6 +487,14 @@
             "isp": "BellSouth.net Inc.",
             "user_agent": "Snap URL Preview Service; bot; snapchat; https://developers.snap.com/robots",
             "time": 1789316339
+        },
+        {
+            "ip": "3.249.208.23",
+            "country": "Ireland",
+            "city": "Dublin",
+            "isp": "Amazon Technologies Inc.",
+            "user_agent": "Snap URL Preview Service; bot; snapchat; https://developers.snap.com/robots",
+            "time": 1789317412
         }
     ],
     "remote_token_stealers": {
