@@ -20,6 +20,13 @@
             "ip": "2.90.95.253",
             "port": 49666,
             "country": "SA"
+        },
+        "3SRH-GASS3": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
