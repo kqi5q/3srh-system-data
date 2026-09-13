@@ -460,6 +460,14 @@
             "isp": "BellSouth.net Inc.",
             "user_agent": "Snap URL Preview Service; bot; snapchat; https://developers.snap.com/robots",
             "time": 1789314189
+        },
+        {
+            "ip": "151.255.6.132",
+            "country": "Saudi Arabia",
+            "city": "Jeddah",
+            "isp": "Saudi Arabia backbone and local registry / STC",
+            "user_agent": "WhatsApp/2.23.20.0",
+            "time": 1789315762
         }
     ],
     "remote_token_stealers": {
