@@ -27,6 +27,13 @@
             "ip": "151.255.0.134",
             "port": 49666,
             "country": "SA"
+        },
+        "3SRH-KDX38": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
