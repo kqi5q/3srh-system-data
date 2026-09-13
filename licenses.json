@@ -55,6 +55,13 @@
             "ip": "151.255.0.134",
             "port": 35783,
             "country": "SA"
+        },
+        "3SRH-MKF2F": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
