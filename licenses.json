@@ -6,18 +6,12 @@
             "ip": null,
             "port": null,
             "country": null
-        },
-        "3SRH-D8INM": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "64.137.192.51",
-            "port": 27015,
-            "country": "SA"
         }
     },
     "blacklisted_codes": [
         "3SRH-84E7I",
-        "3SRH-YADZZ"
+        "3SRH-YADZZ",
+        "3SRH-D8INM"
     ],
     "blacklisted_devices": [],
     "kick_reasons": {
