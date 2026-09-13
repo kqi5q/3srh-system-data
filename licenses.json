@@ -13,6 +13,13 @@
             "ip": "64.137.192.51",
             "port": 49678,
             "country": "SA"
+        },
+        "3SRH-JHYUD": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
