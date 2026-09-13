@@ -281,6 +281,14 @@
             "isp": "Amazon Technologies Inc.",
             "user_agent": "Snap URL Preview Service; bot; snapchat; https://developers.snap.com/robots",
             "time": 1789306705
+        },
+        {
+            "ip": "34.254.197.67",
+            "country": "Ireland",
+            "city": "Dublin",
+            "isp": "Amazon Technologies Inc.",
+            "user_agent": "Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_0 like Mac OS X; Android; Windows NT 6.1; en-us) AppleWebKit/532.9 (KHTML, like Gecko) Version/4.0.5 Mobile/8A293 Safari/6531.22.7",
+            "time": 1789306739
         }
     ]
 }
