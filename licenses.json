@@ -6,34 +6,6 @@
             "ip": null,
             "port": null,
             "country": null
-        },
-        "3SRH-EELOP": {
-            "used": true,
-            "device": "DESKTOP-AU50DS4",
-            "ip": "51.36.227.99",
-            "port": 49672,
-            "country": "SA"
-        },
-        "3SRH-0BPS4": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "2.90.95.253",
-            "port": 49666,
-            "country": "SA"
-        },
-        "3SRH-GASS3": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": null,
-            "port": null,
-            "country": null
-        },
-        "3SRH-V4X2V": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "2.90.95.253",
-            "port": 49664,
-            "country": "SA"
         }
     },
     "blacklisted_codes": [
