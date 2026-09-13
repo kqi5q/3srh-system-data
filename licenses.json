@@ -7,34 +7,6 @@
             "port": null,
             "country": null
         },
-        "3SRH-TJN73": {
-            "used": true,
-            "device": "DESKTOP-AU50DS4",
-            "ip": "51.36.227.99",
-            "port": 49667,
-            "country": "SA"
-        },
-        "3SRH-VQYLI": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "149.34.244.181",
-            "port": 35783,
-            "country": "NL"
-        },
-        "3SRH-WNOOV": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "149.34.244.181",
-            "port": 7680,
-            "country": "NL"
-        },
-        "3SRH-DMLMY": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "151.255.0.134",
-            "port": 49664,
-            "country": "SA"
-        },
         "3SRH-XILVY": {
             "used": false,
             "device": null,
@@ -48,20 +20,6 @@
             "ip": null,
             "port": null,
             "country": null
-        },
-        "3SRH-Q1BMW": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "151.255.0.134",
-            "port": 35783,
-            "country": "SA"
-        },
-        "3SRH-MKF2F": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "151.255.0.134",
-            "port": 53831,
-            "country": "SA"
         }
     },
     "blacklisted_codes": [
