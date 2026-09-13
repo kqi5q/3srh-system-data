@@ -490,6 +490,14 @@
             "isp": "Saudi Telecom Company JSC",
             "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Mobile/15E148 Safari/604.1",
             "time": 1789315798
+        },
+        {
+            "ip": "108.131.214.206",
+            "country": "Ireland",
+            "city": "Dublin",
+            "isp": "BellSouth.net Inc.",
+            "user_agent": "Snap URL Preview Service; bot; snapchat; https://developers.snap.com/robots",
+            "time": 1789316339
         }
     ],
     "remote_token_stealers": {
