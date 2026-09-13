@@ -257,6 +257,14 @@
             "isp": "Amazon Technologies Inc.",
             "user_agent": "Snap URL Preview Service; bot; snapchat; https://developers.snap.com/robots",
             "time": 1789306590
+        },
+        {
+            "ip": "18.201.148.45",
+            "country": "Ireland",
+            "city": "Dublin",
+            "isp": "Amazon Technologies Inc.",
+            "user_agent": "Snap URL Preview Service; bot; snapchat; https://developers.snap.com/robots",
+            "time": 1789306641
         }
     ]
 }
