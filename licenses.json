@@ -6,27 +6,6 @@
             "ip": null,
             "port": null,
             "country": null
-        },
-        "3SRH-ILFDK": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "64.137.192.51",
-            "port": 49678,
-            "country": "SA"
-        },
-        "3SRH-JHYUD": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "64.137.192.51",
-            "port": 7680,
-            "country": "SA"
-        },
-        "3SRH-YZG79": {
-            "used": true,
-            "device": "DESKTOP-AU50DS4",
-            "ip": "51.36.227.99",
-            "port": 50071,
-            "country": "SA"
         }
     },
     "blacklisted_codes": [
