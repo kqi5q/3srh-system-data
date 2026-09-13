@@ -13,8 +13,8 @@ from threading import Thread
 
 app = Flask('')
 
-# استبدل هذا الرابط حصرياً برابط استضافتك الفعلي (مثلاً رابط Replit الخاص بك)
-HOST_URL = "https://your-bot-replit-or-server-url.repl.co"
+# تم وضع رابط استضافتك الحقيقي على Render هنا
+HOST_URL = "https://threesrh-system-data.onrender.com"
 
 @app.route('/')
 def home():
