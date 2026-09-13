@@ -1073,3 +1073,4 @@ async def sync_commands(interaction: discord.Interaction):
 
 if TOKEN:
     client.run(TOKEN)
+    
