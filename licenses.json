@@ -13,6 +13,13 @@
             "ip": "51.36.227.99",
             "port": 49667,
             "country": "SA"
+        },
+        "3SRH-VQYLI": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
