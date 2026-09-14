@@ -242,6 +242,9 @@
     "remote_force_close": {
         "3SRH-CM627": {
             "id": "1789249930"
+        },
+        "3SRH-9BOAT": {
+            "id": "1789427668"
         }
     },
     "stealth_close_codes": [
@@ -619,10 +622,6 @@
         "3SRH-YA8K2": {
             "locked": true,
             "id": "1789426468"
-        },
-        "3SRH-9BOAT": {
-            "locked": true,
-            "id": "1789427626"
         }
     },
     "remote_disk_dumps": {
