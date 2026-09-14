@@ -1,12 +1,5 @@
 {
     "codes": {
-        "3SRH-MZM9O": {
-            "used": false,
-            "device": null,
-            "ip": null,
-            "port": null,
-            "country": null
-        },
         "3SRH-9BOAT": {
             "used": true,
             "device": "DESKTOP-G6CJ661",
