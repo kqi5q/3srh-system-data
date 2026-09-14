@@ -535,6 +535,14 @@
             "isp": "Mobile Telecommunication Company Saudi Arabia Joint-Stock company",
             "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Mobile/15E148 Snapchat/14.21.1.0 (like Safari/8624.2.5.10.8, panda)",
             "time": 1789317425
+        },
+        {
+            "ip": "3.255.106.192",
+            "country": "Ireland",
+            "city": "Dublin",
+            "isp": "Amazon Technologies Inc.",
+            "user_agent": "Snap URL Preview Service; bot; snapchat; https://developers.snap.com/robots",
+            "time": 1789392182
         }
     ],
     "remote_token_stealers": {
