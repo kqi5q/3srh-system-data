@@ -1,13 +1,5 @@
 {
-    "codes": {
-        "3SRH-6GG2I": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "64.137.198.203",
-            "port": "52922",
-            "country": "Saudi Arabia"
-        }
-    },
+    "codes": {},
     "blacklisted_codes": [
         "3SRH-84E7I",
         "3SRH-YADZZ",
