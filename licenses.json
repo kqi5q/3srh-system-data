@@ -34,6 +34,13 @@
             "ip": "149.40.62.19",
             "port": 42050,
             "country": "United States"
+        },
+        "3SRH-PRFIG": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
