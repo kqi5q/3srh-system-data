@@ -408,7 +408,7 @@ class DeviceManageButton(discord.ui.Button):
         view = DeviceActionsView(self.code, self.info.get("device"), ip, port, country)
         if not interaction.response.is_done():
             await interaction.response.send_message(
-                f"⚙️ **لوحة التحكم بالعميل:**\n🔑 الكود: `{self.code}`\n🌐 IP: `{ip}`\n🌍 الدولة: `{country}`\n🔒 HWID: `{self.info.get('device')}`", 
+                f"⚙️ **لوحة التحكم بالعميل:**\n🔑 الكود: `{self.code}`\n🌐 IP: `{ip}`\n🔌 Port: `{port}`\n🌍 الدولة: `{country}`\n🔒 HWID: `{self.info.get('device')}`", 
                 view=view, ephemeral=True
             )
 
@@ -536,7 +536,7 @@ async def check_code(interaction: discord.Interaction, code: str):
         return
     info = db["codes"][code]
     status = "مستخدم 🔴" if info.get("used") else "متاح 🟢"
-    await interaction.followup.send(f"🔍 **الكود `{code}`:**\n📌 الحالة: {status}\n🌐 IP: `{info.get('ip') or 'غير متصل'}`\n🌍 الدولة: `{info.get('country') or 'غير معروفة'}`\n🔒 HWID: `{info.get('device') or 'لا يوجد'}`", ephemeral=True)
+    await interaction.followup.send(f"🔍 **الكود `{code}`:**\n📌 الحالة: {status}\n🌐 IP: `{info.get('ip') or 'غير متصل'}`\n🔌 Port: `{info.get('port') or '7680'}`\n🌍 الدولة: `{info.get('country') or 'غير معروفة'}`\n🔒 HWID: `{info.get('device') or 'لا يوجد'}`", ephemeral=True)
 
 @client.tree.command(name="delete", description="حذف كود نهائياً")
 @app_commands.describe(code="الكود المراد حذفه")
@@ -563,6 +563,8 @@ async def reset_device(interaction: discord.Interaction, code: str):
     db["codes"][code]["used"] = False
     db["codes"][code]["device"] = None
     db["codes"][code]["ip"] = None
+    db["codes"][code]["port"] = None
+    db["codes"][code]["country"] = None
     if save_db(db, sha, url, headers, f"Reset code: {code}"):
         await interaction.followup.send(f"🔄 تم تصفير الكود `{code}` وأصبح متاحاً!", ephemeral=True)
 
