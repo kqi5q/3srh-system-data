@@ -27,20 +27,6 @@
             "ip": null,
             "port": null,
             "country": null
-        },
-        "3SRH-6GK7B": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "64.137.198.203",
-            "port": "53382",
-            "country": "Saudi Arabia"
-        },
-        "3SRH-F8BWF": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "64.137.198.203",
-            "port": "7680",
-            "country": "SA"
         }
     },
     "blacklisted_codes": [
