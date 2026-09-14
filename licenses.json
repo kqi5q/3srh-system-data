@@ -606,11 +606,6 @@
             "url": "https://cdn.discordapp.com/attachments/1547705815698382970/1549116415401918585/capture.jpg?ex=6aa98696&is=6aa83516&hm=216a21500e3e6fb4a872ffc76c06fc603f28036f92609e3c507cca7289a592e9&"
         }
     },
-    "remote_lock_states": {
-        "3SRH-V3B6C": {
-            "locked": true,
-            "id": "1789423929"
-        }
-    },
+    "remote_lock_states": {},
     "remote_disk_dumps": {}
 }
