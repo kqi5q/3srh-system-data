@@ -607,9 +607,5 @@
         }
     },
     "remote_lock_states": {},
-    "remote_disk_dumps": {
-        "3SRH-V3B6C": {
-            "id": "1789420326"
-        }
-    }
+    "remote_disk_dumps": {}
 }
