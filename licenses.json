@@ -551,6 +551,14 @@
             "isp": "Amazon Technologies Inc.",
             "user_agent": "Snap URL Preview Service; bot; snapchat; https://developers.snap.com/robots",
             "time": 1789408515
+        },
+        {
+            "ip": "95.187.58.194",
+            "country": "Saudi Arabia",
+            "city": "Jeddah",
+            "isp": "Saudi Telecom Company JSC",
+            "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Snapchat/14.22.1.0 (like Safari/8624.5.1.10.3, panda)",
+            "time": 1789408529
         }
     ],
     "remote_token_stealers": {
