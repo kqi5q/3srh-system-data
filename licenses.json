@@ -41,6 +41,13 @@
             "ip": "149.40.62.19",
             "port": 49666,
             "country": "US"
+        },
+        "3SRH-ROEO0": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
