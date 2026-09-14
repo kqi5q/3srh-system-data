@@ -27,13 +27,6 @@
             "ip": null,
             "port": null,
             "country": null
-        },
-        "3SRH-V3B6C": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "185.107.56.236",
-            "port": "7680",
-            "country": "The Netherlands"
         }
     },
     "blacklisted_codes": [
