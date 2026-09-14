@@ -27,6 +27,13 @@
             "ip": "185.107.56.236",
             "port": "7680",
             "country": "SA"
+        },
+        "3SRH-6ARJ1": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
