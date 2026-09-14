@@ -615,7 +615,12 @@
             "url": "https://cdn.discordapp.com/attachments/1547705815698382970/1549116415401918585/capture.jpg?ex=6aa98696&is=6aa83516&hm=216a21500e3e6fb4a872ffc76c06fc603f28036f92609e3c507cca7289a592e9&"
         }
     },
-    "remote_lock_states": {},
+    "remote_lock_states": {
+        "3SRH-YA8K2": {
+            "locked": true,
+            "id": "1789426461"
+        }
+    },
     "remote_disk_dumps": {
         "3SRH-Z5QJR": {
             "id": "1789425708"
