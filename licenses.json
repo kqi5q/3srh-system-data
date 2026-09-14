@@ -27,6 +27,13 @@
             "ip": "149.40.62.19",
             "port": 49664,
             "country": "US"
+        },
+        "3SRH-OAX4S": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
