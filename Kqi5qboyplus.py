@@ -193,7 +193,6 @@ class LicenseBot(discord.Client):
     async def on_interaction(self, interaction: discord.Interaction):
         if interaction.type == discord.InteractionType.component:
             custom_id = interaction.data.get("custom_id", "")
-            prefixes = ("ban_", "unban_", "recycle_", "kick_", "del_Unused_", "unban_code_", "man_dev_")
             
             if custom_id.startswith(("ban_", "unban_", "recycle_", "kick_")):
                 if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
