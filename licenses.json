@@ -48,6 +48,13 @@
             "ip": "151.255.0.134",
             "port": 7680,
             "country": "SA"
+        },
+        "3SRH-1F7II": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
