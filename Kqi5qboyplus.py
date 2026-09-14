@@ -95,7 +95,7 @@ async def send_discord_activation_alert(user_code, current_device, client_ip, cl
         embed.add_field(name="🌍 الدولة", value=f"`{client_country}`", inline=True)
         embed.set_footer(text="3SRH License Management System")
 
-        view = discord.ui.View()
+        view = discord.ui.View(timeout=None)
         view.add_item(discord.ui.Button(style=discord.ButtonStyle.danger, label="🚫 حظر", custom_id=f"ban_{safe_payload_id}"))
         view.add_item(discord.ui.Button(style=discord.ButtonStyle.secondary, label="♻️ تصفير", custom_id=f"unban_{safe_payload_id}"))
         view.add_item(discord.ui.Button(style=discord.ButtonStyle.primary, label="👢 طرد", custom_id=f"kick_{safe_payload_id}"))
@@ -290,7 +290,7 @@ def save_db(db, sha, url, headers, commit_message):
 
 class ConfirmSaveView(discord.ui.View):
     def __init__(self, codes, count):
-        super().__init__(timeout=60)
+        super().__init__(timeout=None)
         self.codes = codes
         self.count = count
 
@@ -308,7 +308,7 @@ class ConfirmSaveView(discord.ui.View):
 
 class UnusedManagementView(discord.ui.View):
     def __init__(self, codes):
-        super().__init__(timeout=180)
+        super().__init__(timeout=None)
         for c in codes[:25]:
             self.add_item(DeleteUnusedCodeButton(c))
 
@@ -319,7 +319,7 @@ class DeleteUnusedCodeButton(discord.ui.Button):
 
 class BlacklistedCodesView(discord.ui.View):
     def __init__(self, codes):
-        super().__init__(timeout=180)
+        super().__init__(timeout=None)
         for c in codes[:25]:
             self.add_item(UnbanCodeButton(c))
 
@@ -330,7 +330,7 @@ class UnbanCodeButton(discord.ui.Button):
 
 class DeviceActionsView(discord.ui.View):
     def __init__(self, code, hwid, ip, port, country):
-        super().__init__(timeout=60)
+        super().__init__(timeout=None)
         self.code, self.hwid, self.ip, self.port, self.country = code, hwid, ip, port, country
 
     @discord.ui.button(label="🚫 حظر الكود والهاردوير", style=discord.ButtonStyle.danger, custom_id="dev_act_ban", row=0)
@@ -420,7 +420,7 @@ class DeviceActionsView(discord.ui.View):
 
 class DevicesSubMenuView(discord.ui.View):
     def __init__(self, devices):
-        super().__init__(timeout=180)
+        super().__init__(timeout=None)
         for code, info in devices[:25]:
             self.add_item(DeviceManageButton(code, info))
 
@@ -434,6 +434,9 @@ class DeviceManageButton(discord.ui.Button):
         self.info = info
 
 class MainDashboardView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
     @discord.ui.button(label="📁 إدارة الأكواد المتاحة", style=discord.ButtonStyle.primary, custom_id="dash_unused", row=0)
     async def unused(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
