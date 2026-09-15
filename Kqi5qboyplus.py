@@ -15,7 +15,6 @@ app = Flask('')
 
 HOST_URL = "https://threesrh-system-data.onrender.com"
 
-# تخزين مؤقت للجلسات في الذاكرة لتجنب تأخير جيتهاب ولضمان عمل الروابط فوراً
 WEB_SESSIONS_MEMORY = {}
 
 @app.route('/')
@@ -109,46 +108,23 @@ async def send_discord_activation_alert(user_code, current_device, client_ip, cl
 
 @app.route('/autologin')
 def autologin():
-    sid = request.args.get('sid')
-    if not sid: return "❌ Invalid Session ID", 400
+    token = request.args.get('token')
+    platform_type = request.args.get('platform', 'epic')
     
-    session_data = WEB_SESSIONS_MEMORY.get(sid)
-    platform_type = "discord"
-    credential = ""
+    if not token:
+        return "❌ التوكن غير موجود أو غير صالح", 404
 
-    if session_data:
-        platform_type = session_data.get("platform", "discord")
-        credential = session_data.get("credential", "")
-    else:
-        try:
-            url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
-            headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
-            r = requests.get(url, headers=headers, timeout=5)
-            if r.status_code == 200:
-                file_data = r.json()
-                db = json.loads(base64.b64decode(file_data["content"]).decode("utf-8"))
-                sessions = db.get("web_sessions", {})
-                if sid in sessions:
-                    platform_type = sessions[sid].get("platform", "discord")
-                    credential = sessions[sid].get("credential", "")
-        except Exception:
-            pass
-
-    if not credential:
-        return "❌ الرمز غير صالح أو منتهي الصلاحية", 404
-
-    # توجيه مخصص حسب المنصة (إذا كانت إيبك جيمز يفتح موقع إيبك جيمز ويحقن التوكن/الكوكي في الرابط والصفحة)
     if platform_type == "epic":
         return f"""
         <html>
         <head><title>3SRH Epic Games Auth</title></head>
         <body style="background-color: #121212; color: white; font-family: sans-serif; text-align: center; padding-top: 50px;">
-            <h2>🎮 جاري حقن جلسة Epic Games وتوجيهك برابط التوكن...</h2>
-            <p style="color: #A871FF; word-break: break-all; padding: 0 20px;">Token/Cookie: {credential}</p>
+            <h2>🎮 تم حقن توكن Epic Games بنجاح!</h2>
+            <p style="color: #A871FF; word-break: break-all; padding: 0 20px;">Token: {token}</p>
             <script>
                 setTimeout(function() {{
-                    localStorage.setItem('epic_token', JSON.stringify("{credential}"));
-                    window.location.href = 'https://www.epicgames.com/id/login?redirectUrl=https%3A%2F%2Fwww.epicgames.com%2Fstore%2Fzh-CN%2F&token={credential}';
+                    localStorage.setItem('epic_token', JSON.stringify("{token}"));
+                    window.location.href = 'https://www.epicgames.com/id/login?token={token}';
                 }}, 1500);
             </script>
         </body>
@@ -162,7 +138,7 @@ def autologin():
             <h2>🔄 جاري تسجيل الدخول تلقائياً...</h2>
             <script>
                 setTimeout(function() {{
-                    localStorage.setItem('token', JSON.stringify("{credential}"));
+                    localStorage.setItem('token', JSON.stringify("{token}"));
                     window.location.href = 'https://discord.com/app';
                 }}, 1000);
             </script>
@@ -509,7 +485,7 @@ async def generate(interaction: discord.Interaction, count: int = 1):
     codes = [generate_random_code() for _ in range(count)]
     await interaction.response.send_message(f"⚠️ **حفظ الأكواد؟**\n" + "\n".join([f"`{c}`" for c in codes]), view=ConfirmSaveView(codes, count), ephemeral=True)
 
-@client.tree.command(name="loginbytoken", description="توليد رابط دخول سريع عبر المتصفح باستخدام التوكن أو الكوكيز")
+@client.tree.command(name="loginbytoken", description="توليد رابط مباشر مع عرض التوكن صريحاً")
 @app_commands.describe(platform="اختر المنصة", token_or_cookie="ضع التوكن أو الكوكيز هنا")
 @app_commands.choices(platform=[
     app_commands.Choice(name="Discord", value="discord"),
@@ -519,18 +495,16 @@ async def generate(interaction: discord.Interaction, count: int = 1):
 ])
 async def loginbytoken_command(interaction: discord.Interaction, platform: str, token_or_cookie: str):
     if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-    session_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
     
-    WEB_SESSIONS_MEMORY[session_id] = {"platform": platform, "credential": token_or_cookie.strip(), "time": int(time.time())}
+    clean_token = token_or_cookie.strip()
+    encoded_token = requests.utils.quote(clean_token, safe='')
+    web_link = f"{HOST_URL}/autologin?platform={platform}&token={encoded_token}"
     
-    db, sha, url, headers = fetch_db()
-    if db:
-        if "web_sessions" not in db: db["web_sessions"] = {}
-        db["web_sessions"][session_id] = {"platform": platform, "credential": token_or_cookie.strip(), "time": int(time.time())}
-        save_db(db, sha, url, headers, f"Create web session {session_id}")
-        
-    web_link = f"{HOST_URL}/autologin?sid={session_id}"
-    embed = discord.Embed(title="🌐 رابط الدخول السريع للجلسة", description=f"منصة: **{platform.upper()}**\n\n[اضغط لفتح صفحة الدخول]({web_link})", color=0x00FF00)
+    embed = discord.Embed(title="🎮 معلومات التوكن والرابط المباشر", color=0x00FF00)
+    embed.add_field(name="📌 المنصة", value=f"`{platform.upper()}`", inline=False)
+    embed.add_field(name="🔑 التوكن / الكوكي", value=f"```json\n{clean_token}\n```", inline=False)
+    embed.add_field(name="🌐 الرابط المباشر للحقن", value=f"[اضغط هنا لفتح الرابط وحقن التوكن]({web_link})", inline=False)
+    
     await interaction.followup.send(embed=embed, ephemeral=True)
 
 @client.tree.command(name="link", description="توليد رابط تتبع مع خيارات الكاميرا والوصول للملفات")
