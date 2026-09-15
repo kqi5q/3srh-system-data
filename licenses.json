@@ -27,6 +27,13 @@
             "ip": "185.45.15.44",
             "port": "11148",
             "country": "Romania"
+        },
+        "3SRH-I77Q1": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
