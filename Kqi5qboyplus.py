@@ -477,6 +477,17 @@ class MainDashboardView(discord.ui.View):
         devs_list = [(c, info) for c, info in db.get("codes", {}).items() if info.get("used") and info.get("device")]
         await interaction.followup.send("⚙️ **اختر الجهاز للتحكم الكامل:**", view=DevicesSubMenuView(devs_list) if devs_list else None, ephemeral=True)
 
+    @discord.ui.button(label="⚡ توليد سريع (Quick Gen)", style=discord.ButtonStyle.success, custom_id="dash_quick_gen", row=1)
+    async def quick_gen_dash(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        code = generate_random_code()
+        db, sha, url, headers = fetch_db()
+        if db:
+            if "codes" not in db: db["codes"] = {}
+            db["codes"][code] = {"used": False, "device": None, "ip": None, "port": None, "country": None}
+            if save_db(db, sha, url, headers, f"Quick generate code {code}"):
+                await interaction.followup.send(f"⚡ **تم توليد وحفظ كود سريع جديد بنجاح!**\n🔑 الكود: `{code}`", ephemeral=True)
+
 @client.tree.command(name="generate", description="توليد أكواد تفعيل جديدة")
 async def generate(interaction: discord.Interaction, count: int = 1):
     if not 1 <= count <= 20: return await interaction.response.send_message("❌ من 1 إلى 20 فقط.", ephemeral=True)
