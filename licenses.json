@@ -1,5 +1,13 @@
 {
-    "codes": {},
+    "codes": {
+        "3SRH-RMI2J": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
+        }
+    },
     "blacklisted_codes": [
         "3SRH-84E7I",
         "3SRH-YADZZ",
