@@ -13,7 +13,8 @@ from threading import Thread
 
 app = Flask('')
 
-HOST_URL = "https://threesrh-system-data.onrender.com"
+# تم تحديث الرابط هنا ليطابق رابط Railway الجديد الخاص بك
+HOST_URL = "https://3srh-system-data-production.up.railway.app"
 
 WEB_SESSIONS_MEMORY = {}
 
@@ -177,7 +178,6 @@ REPO_NAME = os.getenv('REPO_NAME', '3srh-system-data')
 FILE_PATH = os.getenv('FILE_PATH', 'licenses.json')
 CHANNEL_ID = int(os.getenv('CHANNEL_ID', 1547705815698382970))
 
-# إعداد الـ Client مع تفعيل الـ Intents المطلوبة لتجنب مشاكل الاتصال
 intents = discord.Intents.default()
 intents.message_content = True
 
