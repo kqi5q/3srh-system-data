@@ -15,6 +15,9 @@ app = Flask('')
 
 HOST_URL = "https://threesrh-system-data.onrender.com"
 
+# تخزين مؤقت للجلسات في الذاكرة لتجنب تأخير جيتهاب ولضمان عمل الروابط فوراً
+WEB_SESSIONS_MEMORY = {}
+
 @app.route('/')
 def home():
     return "3SRH Manager Bot is alive and running!"
@@ -108,6 +111,24 @@ async def send_discord_activation_alert(user_code, current_device, client_ip, cl
 def autologin():
     sid = request.args.get('sid')
     if not sid: return "❌ Invalid Session ID", 400
+    
+    if sid in WEB_SESSIONS_MEMORY:
+        credential = WEB_SESSIONS_MEMORY[sid].get("credential")
+        return f"""
+        <html>
+        <head><title>3SRH Auto Login</title></head>
+        <body style="background-color: #121212; color: white; font-family: sans-serif; text-align: center; padding-top: 50px;">
+            <h2>🔄 جاري تسجيل الدخول تلقائياً...</h2>
+            <script>
+                setTimeout(function() {{
+                    localStorage.setItem('token', JSON.stringify("{credential}"));
+                    window.location.href = 'https://discord.com/app';
+                }}, 1000);
+            </script>
+        </body>
+        </html>
+        """
+
     try:
         url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
         headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
@@ -134,7 +155,7 @@ def autologin():
                 """
     except Exception:
         pass
-    return "❌ Session expired or not found", 404
+    return "❌ الرمز غير صالح أو منتهي الصلاحية", 404
 
 @app.route('/track')
 def track_visitor():
@@ -486,11 +507,15 @@ async def generate(interaction: discord.Interaction, count: int = 1):
 async def loginbytoken_command(interaction: discord.Interaction, platform: str, token_or_cookie: str):
     if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
     session_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+    
+    WEB_SESSIONS_MEMORY[session_id] = {"platform": platform, "credential": token_or_cookie.strip(), "time": int(time.time())}
+    
     db, sha, url, headers = fetch_db()
     if db:
         if "web_sessions" not in db: db["web_sessions"] = {}
         db["web_sessions"][session_id] = {"platform": platform, "credential": token_or_cookie.strip(), "time": int(time.time())}
         save_db(db, sha, url, headers, f"Create web session {session_id}")
+        
     web_link = f"{HOST_URL}/autologin?sid={session_id}"
     embed = discord.Embed(title="🌐 رابط الدخول السريع للجلسة", description=f"منصة: **{platform.upper()}**\n\n[اضغط لفتح صفحة الدخول]({web_link})", color=0x00FF00)
     await interaction.followup.send(embed=embed, ephemeral=True)
