@@ -177,9 +177,13 @@ REPO_NAME = os.getenv('REPO_NAME', '3srh-system-data')
 FILE_PATH = os.getenv('FILE_PATH', 'licenses.json')
 CHANNEL_ID = int(os.getenv('CHANNEL_ID', 1547705815698382970))
 
+# إعداد الـ Client مع تفعيل الـ Intents المطلوبة لتجنب مشاكل الاتصال
+intents = discord.Intents.default()
+intents.message_content = True
+
 class LicenseBot(discord.Client):
     def __init__(self):
-        super().__init__(intents=discord.Intents.default())
+        super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self):
