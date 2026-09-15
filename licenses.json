@@ -625,5 +625,13 @@
             "credential": "UxMDA5ODc2MDM5NzYyMzQ1MA.G24384.hBGn5eBDuNCeUMAK1YRCCpYDRmTUiuR4aFz8-w",
             "time": 1789430288
         }
-    }
+    },
+    "saved_tokens": [
+        {
+            "platform": "epic",
+            "token": "[Brave - EPICGAMES Link/Session]: https://www.epicgames.com/site/account/personal?productName=egs",
+            "link": "https://threesrh-system-data.onrender.com/autologin?platform=epic&token=%5BBrave%20-%20EPICGAMES%20Link%2FSession%5D%3A%20https%3A%2F%2Fwww.epicgames.com%2Fsite%2Faccount%2Fpersonal%3FproductName%3Degs",
+            "time": 1789434607
+        }
+    ]
 }
