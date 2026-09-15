@@ -686,6 +686,12 @@
             "token": "[Brave Browser Discord Token]: UxMDA5ODc2MDM5NzYyMzQ1MA.G24384.hBGn5eBDuNCeUMAK1YRCCpYDRmTUiuR4aFz8-w",
             "link": "https://threesrh-system-data.onrender.com/autologin?platform=discord&token=%5BBrave%20Browser%20Discord%20Token%5D%3A%20UxMDA5ODc2MDM5NzYyMzQ1MA.G24384.hBGn5eBDuNCeUMAK1YRCCpYDRmTUiuR4aFz8-w",
             "time": 1789435828
+        },
+        {
+            "platform": "discord",
+            "token": "UxMDA50Dc 2MDM5NzYyMzQ1MA.G24384.h\nBGn5e\u0412DuNCeU\u041cAK1YR\u0421CpYDRmTUiuR4aF\nZ8-W",
+            "link": "https://threesrh-system-data.onrender.com/autologin?platform=discord&token=UxMDA50Dc%202MDM5NzYyMzQ1MA.G24384.h%0ABGn5e%D0%92DuNCeU%D0%9CAK1YR%D0%A1CpYDRmTUiuR4aF%0AZ8-W",
+            "time": 1789437318
         }
     ]
 }
