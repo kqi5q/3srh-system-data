@@ -166,7 +166,11 @@ def track_visitor():
     </html>
     """, target=redirect_target)
 
-def run(): app.run(host='0.0.0.0', port=8080)
+# تعديل تشغيل السيرفر ليناسب Render تلقائياً
+def run():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
+
 def keep_alive(): Thread(target=run, daemon=True).start()
 keep_alive()
 
@@ -563,7 +567,7 @@ async def delete_code(interaction: discord.Interaction, code: str):
         await interaction.followup.send(f"❌ الكود غير موجود.", ephemeral=True)
         return
     del db["codes"][code]
-    if save_db(db, sha, url, headers, f"Delete code: {code}"):
+    if save_db(db, sha, url, headers, f"Delete code: {code}otipo"):
         await interaction.followup.send(f"🗑️ تم حذف الكود `{code}` نهائياً!", ephemeral=True)
 
 @client.tree.command(name="resetdevice", description="تصفير ارتباط الكود وإرجاعه متاحاً")
