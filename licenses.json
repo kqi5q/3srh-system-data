@@ -21,26 +21,12 @@
             "port": null,
             "country": null
         },
-        "3SRH-RRNCU": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "185.45.15.44",
-            "port": "11148",
-            "country": "Romania"
-        },
         "3SRH-I77Q1": {
             "used": false,
             "device": null,
             "ip": null,
             "port": null,
             "country": null
-        },
-        "3SRH-7CHVD": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "151.255.34.185",
-            "port": "47510",
-            "country": "Saudi Arabia"
         }
     },
     "blacklisted_codes": [
