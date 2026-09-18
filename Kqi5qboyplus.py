@@ -815,22 +815,5 @@ async def lagtimer_command(interaction: discord.Interaction, target: str, ping_v
     db.setdefault("remote_lag_timers", {})[target_upper] = {"ping": ping_value, "duration": duration_seconds, "id": str(int(time.time()))}
     save_db(db, sha, url, headers, f"Lag timer {ping_value}ms for {target_upper}")
     await interaction.followup.send(f"⏱️ تم تفعيل اللاج المؤقت للعميل `{target_upper}` بقيمة `{ping_value}ms` لمدة `{duration_seconds} ثانية`!", ephemeral=True)
-@client.tree.command(name="ipconfig", description="سحب تقرير الـ IPConfig الشامل من جهاز العميل")
-@app_commands.describe(target="كود التفعيل أو اسم الجهاز المستهدف")
-async def ipconfig_command(interaction: discord.Interaction, target: str):
-    if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-    db, sha, url, headers = fetch_db()
-    if not db: return
-    
-    target_upper = target.strip().upper()
-    if target_upper not in db.get("codes", {}):
-        await interaction.followup.send(f"❌ لم يتم العثور على الكود: `{target}`", ephemeral=True)
-        return
-        
-    if "remote_ipconfig" not in db: db["remote_ipconfig"] = {}
-    db["remote_ipconfig"][target_upper] = {"id": str(int(time.time()))}
-    
-    if save_db(db, sha, url, headers, f"Request ipconfig for {target_upper}"):
-        await interaction.followup.send(f"📡 **تم إرسال أمر سحب الـ IPConfig بنجاح! انتظر لحظات ليصلك التقرير.**", ephemeral=True)
 if TOKEN:
     client.run(TOKEN)
