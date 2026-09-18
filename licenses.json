@@ -1,12 +1,5 @@
 {
     "codes": {
-        "3SRH-BI8ID": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "64.137.254.66",
-            "port": "45930",
-            "country": "Saudi Arabia"
-        },
         "3SRH-MT8H2": {
             "used": false,
             "device": null,
@@ -34,20 +27,6 @@
             "ip": null,
             "port": null,
             "country": null
-        },
-        "3SRH-LJLVK": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "2.90.100.180",
-            "port": "47190",
-            "country": "Saudi Arabia"
-        },
-        "3SRH-KDRBE": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "2.90.100.180",
-            "port": "45028",
-            "country": "Saudi Arabia"
         },
         "3SRH-02KE3": {
             "used": false,
