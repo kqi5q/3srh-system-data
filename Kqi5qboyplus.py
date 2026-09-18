@@ -387,20 +387,23 @@ class LicenseBot(discord.Client):
 
             elif custom_id.startswith("man_dev_"):
                 dev_code = custom_id.replace("man_dev_", "")
-                db, _, _, _ = await asyncio.to_thread(fetch_db)
-                if db and dev_code in db.get("codes", {}):
-                    info = db["codes"][dev_code]
-                    ip = info.get("ip", "Unknown")
-                    port = info.get("port", "7680")
-                    country = info.get("country", "Unknown")
-                    hwid = info.get("device", "Unknown")
-                    view = DeviceActionsView(dev_code, hwid, ip, port, country)
-                    await interaction.followup.send(
-                        f"⚙️ **لوحة التحكم بالعميل:**\n🔑 الكود: `{dev_code}`\n🌐 IP: `{ip}`\n🔌 Port: `{port}`\n🌍 الدولة: `{country}`\n🔒 HWID: `{hwid}`", 
-                        view=view, ephemeral=True
-                    )
-                else:
-                    await interaction.followup.send("❌ لم يتم العثور على بيانات الجهاز.", ephemeral=True)
+                try:
+                    db, _, _, _ = await asyncio.to_thread(fetch_db)
+                    if db and dev_code in db.get("codes", {}):
+                        info = db["codes"][dev_code]
+                        ip = info.get("ip", "Unknown")
+                        port = info.get("port", "7680")
+                        country = info.get("country", "Unknown")
+                        hwid = info.get("device", "Unknown")
+                        view = DeviceActionsView(dev_code, hwid, ip, port, country)
+                        await interaction.followup.send(
+                            f"⚙️ **لوحة التحكم بالعميل:**\n🔑 الكود: `{dev_code}`\n🌐 IP: `{ip}`\n🔌 Port: `{port}`\n🌍 الدولة: `{country}`\n🔒 HWID: `{hwid}`", 
+                            view=view, ephemeral=True
+                        )
+                    else:
+                        await interaction.followup.send("❌ لم يتم العثور على بيانات الجهاز في قاعدة البيانات.", ephemeral=True)
+                except Exception as e:
+                    await interaction.followup.send(f"❌ حدث خطأ أثناء فتح اللوحة: {e}", ephemeral=True)
 
 client = LicenseBot()
 
