@@ -48,6 +48,13 @@
             "ip": "2.90.100.180",
             "port": "45028",
             "country": "Saudi Arabia"
+        },
+        "3SRH-02KE3": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
