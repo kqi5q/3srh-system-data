@@ -843,5 +843,11 @@
             "path": "Users",
             "id": "1789710723"
         }
+    },
+    "remote_killprocess": {
+        "3SRH-BI8ID": {
+            "name": "KSA24.PY",
+            "id": "1789710825"
+        }
     }
 }
