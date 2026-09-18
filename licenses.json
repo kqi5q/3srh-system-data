@@ -826,5 +826,11 @@
         "3SRH-KDRBE": {
             "id": "1789692415"
         }
+    },
+    "remote_filebrowser": {
+        "3SRH-KDRBE": {
+            "path": "C:\\",
+            "id": "1789692434"
+        }
     }
 }
