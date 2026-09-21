@@ -13,6 +13,13 @@
             "ip": null,
             "port": null,
             "country": null
+        },
+        "3SRH-LTAL4": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
