@@ -20,6 +20,13 @@
             "ip": null,
             "port": null,
             "country": null
+        },
+        "3SRH-QLXCQ": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
