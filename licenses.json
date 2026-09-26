@@ -183,9 +183,6 @@
         },
         "3SRH-BI8ID": {
             "id": "1789710989"
-        },
-        "3SRH-IFRHY": {
-            "id": "1790403166.34966"
         }
     },
     "remote_exports": {
@@ -854,9 +851,6 @@
     "remote_lanscan": {
         "3SRH-BI8ID": {
             "id": "1789710920"
-        },
-        "3SRH-IFRHY": {
-            "id": "1790403175.4642847"
         }
     },
     "remote_force_persistence": {
@@ -868,9 +862,6 @@
         },
         "3SRH-LTAL4": {
             "id": "1789970353.9677653"
-        },
-        "3SRH-IFRHY": {
-            "id": "1790403133.1757143"
         }
     },
     "remote_lag_timers": {
