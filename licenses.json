@@ -27,6 +27,13 @@
             "ip": "46.210.165.60",
             "port": "56316",
             "country": "Israel"
+        },
+        "3SRH-B0G96": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
