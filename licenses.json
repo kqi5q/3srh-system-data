@@ -14,20 +14,6 @@
             "port": null,
             "country": null
         },
-        "3SRH-YXR47": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "185.252.220.158",
-            "port": "49828",
-            "country": "Romania"
-        },
-        "3SRH-KYIWZ": {
-            "used": true,
-            "device": "DESKTOP-VKRMBR2",
-            "ip": "46.210.165.60",
-            "port": "56316",
-            "country": "Israel"
-        },
         "3SRH-B0G96": {
             "used": false,
             "device": null,
