@@ -21,13 +21,6 @@
             "port": null,
             "country": null
         },
-        "3SRH-QLXCQ": {
-            "used": false,
-            "device": null,
-            "ip": "89.38.99.82",
-            "port": "59104",
-            "country": "The Netherlands"
-        },
         "3SRH-7O7IC": {
             "used": true,
             "device": "DESKTOP-VKRMBR2",
