@@ -1,13 +1,5 @@
 {
-    "codes": {
-        "3SRH-81N02": {
-            "used": true,
-            "device": "DESKTOP-2EI4CCD",
-            "ip": "79.177.151.104",
-            "port": "47228",
-            "country": "Israel"
-        }
-    },
+    "codes": {},
     "blacklisted_codes": [
         "3SRH-84E7I",
         "3SRH-YADZZ",
