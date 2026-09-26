@@ -27,6 +27,13 @@
             "ip": "185.252.220.158",
             "port": "45142",
             "country": "Romania"
+        },
+        "3SRH-ZD3J8": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
