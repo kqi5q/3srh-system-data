@@ -20,6 +20,13 @@
             "ip": "95.186.158.214",
             "port": "40450",
             "country": "Saudi Arabia"
+        },
+        "3SRH-SF7G9": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
