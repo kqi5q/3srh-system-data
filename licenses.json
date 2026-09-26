@@ -34,6 +34,13 @@
             "ip": "46.210.165.60",
             "port": "47806",
             "country": "Israel"
+        },
+        "3SRH-NWF4N": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null
         }
     },
     "blacklisted_codes": [
