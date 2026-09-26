@@ -22,8 +22,8 @@
             "country": null
         },
         "3SRH-QLXCQ": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
+            "used": false,
+            "device": null,
             "ip": "89.38.99.82",
             "port": "59104",
             "country": "The Netherlands"
