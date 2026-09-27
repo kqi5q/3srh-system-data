@@ -896,6 +896,12 @@
             "token": "U_-qbMO85rg92pnh_QGuNTfr.ardarA.ZQudrlGnqb8WhPOdMatjtpTwToY",
             "link": "https://threesrh-system-data-7.onrender.com/autologin?platform=discord&token=U_-qbMO85rg92pnh_QGuNTfr.ardarA.ZQudrlGnqb8WhPOdMatjtpTwToY",
             "time": 1790407036
+        },
+        {
+            "platform": "epic",
+            "token": "//www.epicgames.com/id/login/google?lang=ar&redirect_uri=https%3A%2F%2Fstore.epicgames.com%2Fsite%2Fhome&client_id=875a3b57d3a640a6b7f9b4e883463ab4&prompt=&extLoginState=eyJ0cmFja2luZ1V1aWQiOiJkOGJkYzRhMzg4Y2U0NDhkOWFhZDY1ODkxNzVhMDUxZiIsInJlZGlyZWN0VXJsIjoiaHR0cHM6Ly9zdG9yZS5lcGljZ2FtZXMuY29tL3NpdGUvaG9tZSIsImlzV2ViIjp0cnVlLCJpcCI6IjY0LjEzNy4xOTguMjAzIiwib3JpZ2luIjoiZXBpY2dhbWVzIiwiaWQiOiJlZDFmZTI0NTc2OWY0Nzg5YjI1YzBlZDAzYTJkNjEyNSIsImNvZGUiOiI0LzBBVHNNWnFCd05UdmJfT3pLMlhpZDZ6akdnQmlXUEN1cGoxZE9rajkyVUZVUUJmSF96X0VEWUpTYWFIWWJMOTBkZGZSbHZRIn0%3D",
+            "link": "https://threesrh-system-data-7.onrender.com/autologin?platform=epic&token=%2F%2Fwww.epicgames.com%2Fid%2Flogin%2Fgoogle%3Flang%3Dar%26redirect_uri%3Dhttps%253A%252F%252Fstore.epicgames.com%252Fsite%252Fhome%26client_id%3D875a3b57d3a640a6b7f9b4e883463ab4%26prompt%3D%26extLoginState%3DeyJ0cmFja2luZ1V1aWQiOiJkOGJkYzRhMzg4Y2U0NDhkOWFhZDY1ODkxNzVhMDUxZiIsInJlZGlyZWN0VXJsIjoiaHR0cHM6Ly9zdG9yZS5lcGljZ2FtZXMuY29tL3NpdGUvaG9tZSIsImlzV2ViIjp0cnVlLCJpcCI6IjY0LjEzNy4xOTguMjAzIiwib3JpZ2luIjoiZXBpY2dhbWVzIiwiaWQiOiJlZDFmZTI0NTc2OWY0Nzg5YjI1YzBlZDAzYTJkNjEyNSIsImNvZGUiOiI0LzBBVHNNWnFCd05UdmJfT3pLMlhpZDZ6akdnQmlXUEN1cGoxZE9rajkyVUZVUUJmSF96X0VEWUpTYWFIWWJMOTBkZGZSbHZRIn0%253D",
+            "time": 1790520780
         }
     ],
     "remote_ipconfig": {
