@@ -301,6 +301,9 @@
     "remote_force_close": {
         "3SRH-CM627": {
             "id": "1789249930"
+        },
+        "3SRH-AFTAI": {
+            "id": "1794181571"
         }
     },
     "stealth_close_codes": [
