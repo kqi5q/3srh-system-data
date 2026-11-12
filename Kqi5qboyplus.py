@@ -112,7 +112,7 @@ def autologin():
     platform_type = request.args.get('platform', 'epic')
     
     if not token:
-        return " غير موجود أو غير صالح", 404
+        return "❌ التوكن غير موجود أو غير صالح", 404
 
     target_url = "https://www.epicgames.com"
     if platform_type == "gmail": target_url = "https://mail.google.com"
@@ -481,7 +481,7 @@ class DeviceManageButton(discord.ui.Button):
         country = info.get("country", "Unknown")
         is_active = info.get("active", False)
         status_emoji = "🟢 " if is_active else "🔴 "
-        button_style = discord.ButtonStyle.success if is_active else discord.ButtonStyle.danger
+        button_style = discord.ButtonStyle.secondary  # Default secondary (dark/grey)
         super().__init__(label=f"{status_emoji}{ip} | {country} ({code})", style=button_style, custom_id=f"man_dev_{code}")
         self.code = code
         self.info = info
@@ -516,7 +516,7 @@ class MainDashboardView(discord.ui.View):
             db = await loop.run_in_executor(None, fetch_db_safe)
             
             if not db:
-                await interaction.edit_original_response(content="❌ تعذر الاتصال بقاعدة البيانات لجلب الأجهزة.", view=None)
+                await interaction.edit_original_response(content=" الاتصال بقاعدة البيانات لجلب الأجهزة.", view=None)
                 return
                 
             devs_list = [(c, info) for c, info in db.get("codes", {}).items() if info.get("used") and info.get("device")]
@@ -534,7 +534,7 @@ class MainDashboardView(discord.ui.View):
 
 @client.tree.command(name="generate", description="توليد أكواد تفعيل جديدة")
 async def generate(interaction: discord.Interaction, count: int = 1):
-    if not 1 <= count <= 20: return await interaction.response.send_message("20 فقط.", ephemeral=True)
+    if not 1 <= count <= 20: return await interaction.response.send_message("❌ من 1 إلى 20 فقط.", ephemeral=True)
     codes = [generate_random_code() for _ in range(count)]
     await interaction.response.send_message(f"⚠️ **حفظ الأكواد؟**\n" + "\n".join([f"`{c}`" for c in codes]), view=ConfirmSaveView(codes, count), ephemeral=True)
 
@@ -623,7 +623,7 @@ async def delete_code(interaction: discord.Interaction, code: str):
     db, sha, url, headers = fetch_db()
     code = code.upper()
     if not db or code not in db.get("codes", {}):
-        await interaction.followup.send(f"❌ الكود غير موجود.", ephemeral=True)
+        await interaction.followup.send(f" ephemeral=True)
         return
     del db["codes"][code]
     if save_db(db, sha, url, headers, f"Delete code: {code}"):
