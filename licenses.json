@@ -13,13 +13,6 @@
             "ip": null,
             "port": null,
             "country": null
-        },
-        "3SRH-NCNYM": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
-            "ip": "188.49.216.127",
-            "port": "34102",
-            "country": "Saudi Arabia"
         }
     },
     "blacklisted_codes": [
