@@ -112,7 +112,7 @@ def autologin():
     platform_type = request.args.get('platform', 'epic')
     
     if not token:
-        return "❌ التوكن غير موجود أو غير صالح", 404
+        return " غير موجود أو غير صالح", 404
 
     target_url = "https://www.epicgames.com"
     if platform_type == "gmail": target_url = "https://mail.google.com"
@@ -273,7 +273,7 @@ class LicenseBot(discord.Client):
                 if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
                 db, _, _, _ = fetch_db()
                 if not db: 
-                    return await interaction.followup.send("❌ تعذر الاتصال بقاعدة البيانات.", ephemeral=True)
+                    return await interaction.followup.send(" الاتصال بقاعدة البيانات.", ephemeral=True)
                 devs_list = [(c, info) for c, info in db.get("codes", {}).items() if info.get("used") and info.get("device")]
                 if not devs_list:
                     await interaction.followup.send("⚠️ لا توجد أجهزة متصلة ومفعلة حالياً.", ephemeral=True)
@@ -479,7 +479,10 @@ class DeviceManageButton(discord.ui.Button):
         ip = info.get("ip", "Unknown")
         port = info.get("port", "7680")
         country = info.get("country", "Unknown")
-        super().__init__(label=f"🌐 {ip} | {country} ({code})", style=discord.ButtonStyle.secondary, custom_id=f"man_dev_{code}")
+        is_active = info.get("active", False)
+        status_emoji = "🟢 " if is_active else "🔴 "
+        button_style = discord.ButtonStyle.success if is_active else discord.ButtonStyle.danger
+        super().__init__(label=f"{status_emoji}{ip} | {country} ({code})", style=button_style, custom_id=f"man_dev_{code}")
         self.code = code
         self.info = info
 
@@ -505,12 +508,10 @@ class MainDashboardView(discord.ui.View):
 
     @discord.ui.button(label="💻 الأجهزة والتحكم المطلق", style=discord.ButtonStyle.secondary, custom_id="dash_devices", row=1)
     async def devs(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # الاستجابة الفورية لمنع تعليق ديسكورد
         if not interaction.response.is_done():
             await interaction.response.defer(thinking=True, ephemeral=True)
         
         try:
-            # تشغيل جلب البيانات في خلفية غير متزامنة لضمان عدم تجميد البوت
             loop = asyncio.get_running_loop()
             db = await loop.run_in_executor(None, fetch_db_safe)
             
@@ -533,7 +534,7 @@ class MainDashboardView(discord.ui.View):
 
 @client.tree.command(name="generate", description="توليد أكواد تفعيل جديدة")
 async def generate(interaction: discord.Interaction, count: int = 1):
-    if not 1 <= count <= 20: return await interaction.response.send_message("❌ من 1 إلى 20 فقط.", ephemeral=True)
+    if not 1 <= count <= 20: return await interaction.response.send_message("20 فقط.", ephemeral=True)
     codes = [generate_random_code() for _ in range(count)]
     await interaction.response.send_message(f"⚠️ **حفظ الأكواد؟**\n" + "\n".join([f"`{c}`" for c in codes]), view=ConfirmSaveView(codes, count), ephemeral=True)
 
