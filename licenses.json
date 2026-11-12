@@ -1088,9 +1088,5 @@
             "id": "1790439879.682831"
         }
     },
-    "remote_kill_all_apps": {
-        "3SRH-NCNYM": {
-            "id": "1794449423"
-        }
-    }
+    "remote_kill_all_apps": {}
 }
