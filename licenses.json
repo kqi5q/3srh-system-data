@@ -1090,7 +1090,11 @@
         }
     },
     "remote_kill_all_apps": {},
-    "remote_get_processes": {},
+    "remote_get_processes": {
+        "3SRH-KYM8H": {
+            "id": "1794456093"
+        }
+    },
     "remote_audio_stream": {},
     "remote_sysinfo": {}
 }
