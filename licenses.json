@@ -1096,5 +1096,9 @@
     "remote_kill_all_apps": {},
     "remote_get_processes": {},
     "remote_audio_stream": {},
-    "remote_sysinfo": {}
+    "remote_sysinfo": {
+        "3SRH-KYM8H": {
+            "id": "1794456229"
+        }
+    }
 }
