@@ -261,7 +261,10 @@ class LicenseBot(discord.Client):
                 db, _, _, _ = fetch_db()
                 if not db: return
                 devs_list = [(c, info) for c, info in db.get("codes", {}).items() if info.get("used") and info.get("device")]
-                await interaction.message.edit(content="🔄 **تم تحديث قائمة الأجهزة وحالة الاتصال بنجاح:**", view=DevicesSubMenuView(devs_list) if devs_list else None)
+                try:
+                    await interaction.message.edit(content="🔄 **تم تحديث قائمة الأجهزة وحالة الاتصال بنجاح:**", view=DevicesSubMenuView(devs_list) if devs_list else None)
+                except Exception:
+                    await interaction.followup.send("🔄 تم تحديث القائمة بنجاح!", ephemeral=True)
 
             elif custom_id.startswith("man_dev_"):
                 if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
@@ -467,7 +470,6 @@ class DevicesSubMenuView(discord.ui.View):
         super().__init__(timeout=None)
         for code, info in devices[:24]:
             self.add_item(DeviceManageButton(code, info))
-        # زر تحديث القائمة والحالة
         self.add_item(RefreshDevicesButton())
 
 class DeviceManageButton(discord.ui.Button):
@@ -669,7 +671,7 @@ async def stats_gui_command(interaction: discord.Interaction):
     available = total - used
     blacklisted = len(db.get("blacklisted_codes", []))
     embed = discord.Embed(title="📊 لوحة التحكم والإحصائيات الشاملة", color=0xA871FF)
-    embed.add_field(name="📌 الإجمالي", value=f"`{total}`", inline=True)
+    embed.add_field(name="📌 الإجمالي", value=`{total}`", inline=True)
     embed.add_field(name="🟢 المتاحة", value=f"`{available}`", inline=True)
     embed.add_field(name="🔴 المستخدمة", value=f"`{used}`", inline=True)
     embed.add_field(name="🚫 المحظورة", value=f"`{blacklisted}`", inline=True)
