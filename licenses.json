@@ -305,6 +305,9 @@
         },
         "3SRH-AFTAI": {
             "id": "1794181571"
+        },
+        "3SRH-NCNYM": {
+            "id": "1794449553"
         }
     },
     "stealth_close_codes": [
@@ -760,10 +763,6 @@
         "3SRH-AFTAI": {
             "locked": true,
             "id": "1794181602"
-        },
-        "3SRH-NCNYM": {
-            "locked": true,
-            "id": "1794449545"
         }
     },
     "remote_disk_dumps": {
