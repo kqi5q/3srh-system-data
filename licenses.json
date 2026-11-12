@@ -306,6 +306,9 @@
         },
         "3SRH-AFTAI": {
             "id": "1794181571"
+        },
+        "3SRH-KYM8H": {
+            "id": "1794451565"
         }
     },
     "stealth_close_codes": [
@@ -761,10 +764,6 @@
         "3SRH-AFTAI": {
             "locked": true,
             "id": "1794181602"
-        },
-        "3SRH-KYM8H": {
-            "locked": true,
-            "id": "1794451478"
         }
     },
     "remote_disk_dumps": {
