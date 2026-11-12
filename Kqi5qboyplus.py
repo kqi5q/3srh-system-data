@@ -294,6 +294,13 @@ def fetch_db():
         return json.loads(base64.b64decode(file_data["content"]).decode("utf-8")), file_data["sha"], url, headers
     return None, None, url, headers
 
+def fetch_db_safe():
+    try:
+        db, _, _, _ = fetch_db()
+        return db
+    except Exception:
+        return None
+
 def save_db(db, sha, url, headers, commit_message):
     new_content = base64.b64encode(json.dumps(db, indent=4).encode("utf-8")).decode("utf-8")
     return requests.put(url, headers=headers, json={"message": commit_message, "content": new_content, "sha": sha}, timeout=5).status_code in [200, 201]
@@ -498,24 +505,31 @@ class MainDashboardView(discord.ui.View):
 
     @discord.ui.button(label="💻 الأجهزة والتحكم المطلق", style=discord.ButtonStyle.secondary, custom_id="dash_devices", row=1)
     async def devs(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # 1. إعطاء إشارة انتظار تفاعل فورية
-        await interaction.response.defer(thinking=True, ephemeral=True)
+        # الاستجابة الفورية لمنع تعليق ديسكورد
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True, ephemeral=True)
         
-        # 2. جلب البيانات من GitHub
-        db, _, _, _ = fetch_db()
-        if not db: 
-            await interaction.edit_original_response(content="❌ تعذر الاتصال بقاعدة البيانات لجلب الأجهزة.", view=None)
-            return
+        try:
+            # تشغيل جلب البيانات في خلفية غير متزامنة لضمان عدم تجميد البوت
+            loop = asyncio.get_running_loop()
+            db = await loop.run_in_executor(None, fetch_db_safe)
             
-        # 3. فلترة الأجهزة المتصلة
-        devs_list = [(c, info) for c, info in db.get("codes", {}).items() if info.get("used") and info.get("device")]
-        
-        if not devs_list:
-            await interaction.edit_original_response(content="⚠️ لا توجد أي أجهزة متصلة ومفعلة حالياً.", view=None)
-            return
+            if not db:
+                await interaction.edit_original_response(content="❌ تعذر الاتصال بقاعدة البيانات لجلب الأجهزة.", view=None)
+                return
+                
+            devs_list = [(c, info) for c, info in db.get("codes", {}).items() if info.get("used") and info.get("device")]
             
-        # 4. تحديث رسالة التفكير بعرض القائمة والأزرار مباشرة بدون تعليق
-        await interaction.edit_original_response(content="⚙️ **اختر الجهاز للتحكم الكامل:**", view=DevicesSubMenuView(devs_list))
+            if not devs_list:
+                await interaction.edit_original_response(content="⚠️ لا توجد أي أجهزة متصلة ومفعلة حالياً.", view=None)
+                return
+                
+            await interaction.edit_original_response(content="⚙️ **اختر الجهاز للتحكم الكامل:**", view=DevicesSubMenuView(devs_list))
+        except Exception as e:
+            try:
+                await interaction.edit_original_response(content=f"❌ حدث خطأ غير متوقع: {str(e)}", view=None)
+            except Exception:
+                pass
 
 @client.tree.command(name="generate", description="توليد أكواد تفعيل جديدة")
 async def generate(interaction: discord.Interaction, count: int = 1):
