@@ -20,7 +20,8 @@
             "ip": "188.49.216.127",
             "port": "50162",
             "country": "Saudi Arabia",
-            "active": true
+            "active": true,
+            "last_seen": 1794455443
         }
     },
     "blacklisted_codes": [
