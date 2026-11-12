@@ -297,6 +297,9 @@
         },
         "3SRH-AFTAI": {
             "id": "1794181571"
+        },
+        "3SRH-4H63S": {
+            "id": "1794444018"
         }
     },
     "stealth_close_codes": [
@@ -752,10 +755,6 @@
         "3SRH-AFTAI": {
             "locked": true,
             "id": "1794181602"
-        },
-        "3SRH-4H63S": {
-            "locked": true,
-            "id": "1794443837"
         }
     },
     "remote_disk_dumps": {
