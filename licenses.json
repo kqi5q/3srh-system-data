@@ -22,6 +22,14 @@
             "country": "Saudi Arabia",
             "active": true,
             "last_seen": 1794456230
+        },
+        "3SRH-7AFXV": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null,
+            "last_seen": 0
         }
     },
     "blacklisted_codes": [
