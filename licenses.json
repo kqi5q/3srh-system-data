@@ -1,5 +1,14 @@
 {
-    "codes": {},
+    "codes": {
+        "3SRH-QIN9D": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null,
+            "last_seen": 0
+        }
+    },
     "blacklisted_codes": [
         "3SRH-84E7I",
         "3SRH-YADZZ",
