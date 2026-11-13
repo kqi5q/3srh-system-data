@@ -21,7 +21,7 @@
             "port": "50162",
             "country": "Saudi Arabia",
             "active": true,
-            "last_seen": 1794456448
+            "last_seen": 1794585462
         },
         "3SRH-7AFXV": {
             "used": false,
@@ -1105,9 +1105,5 @@
     "remote_kill_all_apps": {},
     "remote_get_processes": {},
     "remote_audio_stream": {},
-    "remote_sysinfo": {
-        "3SRH-KYM8H": {
-            "id": "1794585461"
-        }
-    }
+    "remote_sysinfo": {}
 }
