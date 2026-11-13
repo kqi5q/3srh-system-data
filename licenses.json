@@ -15,6 +15,14 @@
             "port": null,
             "country": null,
             "last_seen": 0
+        },
+        "3SRH-UDGKR": {
+            "used": false,
+            "device": null,
+            "ip": null,
+            "port": null,
+            "country": null,
+            "last_seen": 0
         }
     },
     "blacklisted_codes": [
