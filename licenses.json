@@ -46,7 +46,7 @@
             "ip": "2.90.66.195",
             "port": "53282",
             "country": "Saudi Arabia",
-            "last_seen": 1794589399
+            "last_seen": 1794589412
         }
     },
     "blacklisted_codes": [
@@ -340,9 +340,6 @@
         },
         "3SRH-AFTAI": {
             "id": "1794181571"
-        },
-        "3SRH-0V708": {
-            "id": "1794589409"
         }
     },
     "stealth_close_codes": [
