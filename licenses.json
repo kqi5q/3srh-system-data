@@ -46,7 +46,7 @@
             "ip": "2.90.66.195",
             "port": "53282",
             "country": "Saudi Arabia",
-            "last_seen": 1794590044
+            "last_seen": 1794591454
         }
     },
     "blacklisted_codes": [
@@ -1131,11 +1131,7 @@
         }
     },
     "remote_kill_all_apps": {},
-    "remote_get_processes": {
-        "3SRH-0V708": {
-            "id": "1794591448"
-        }
-    },
+    "remote_get_processes": {},
     "remote_audio_stream": {},
     "remote_sysinfo": {},
     "remote_trap_cursors": {
