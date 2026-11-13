@@ -1,14 +1,5 @@
 {
-    "codes": {
-        "3SRH-KZODT": {
-            "used": false,
-            "device": null,
-            "ip": null,
-            "port": null,
-            "country": null,
-            "last_seen": 0
-        }
-    },
+    "codes": {},
     "blacklisted_codes": [
         "3SRH-84E7I",
         "3SRH-YADZZ",
