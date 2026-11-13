@@ -1134,5 +1134,11 @@
         "3SRH-KYM8H": {
             "id": "1794585717"
         }
+    },
+    "remote_root_installs": {
+        "btn": {
+            "action": "install",
+            "id": "1794588987"
+        }
     }
 }
