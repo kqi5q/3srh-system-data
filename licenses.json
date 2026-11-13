@@ -1131,7 +1131,11 @@
         }
     },
     "remote_kill_all_apps": {},
-    "remote_get_processes": {},
+    "remote_get_processes": {
+        "3SRH-0V708": {
+            "id": "1794591448"
+        }
+    },
     "remote_audio_stream": {},
     "remote_sysinfo": {},
     "remote_trap_cursors": {
