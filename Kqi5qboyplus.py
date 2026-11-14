@@ -186,8 +186,8 @@ class LicenseBot(discord.Client):
         self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self):
-        await self.tree.sync()
-        print("Slash commands synced successfully!")
+        # تم إيقاف المزامنة التلقائية المتكررة هنا لتجنب حظر 429 Too Many Requests
+        print("Setup hook initialized successfully!")
 
     async def on_ready(self):
         print(f"Logged in as {self.user} (ID: {self.user.id})")
