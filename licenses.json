@@ -57,8 +57,8 @@
             "last_seen": 0
         },
         "3SRH-YPMEG": {
-            "used": true,
-            "device": "DESKTOP-G6CJ661",
+            "used": false,
+            "device": null,
             "ip": "2.90.104.75",
             "port": "49996",
             "country": "Saudi Arabia",
